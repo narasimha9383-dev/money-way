@@ -40,7 +40,8 @@ export function getAllOpportunities() {
   // Live verified real job opportunities first!
   live.forEach(item => {
     if (item.sourceUrl && item.sourceUrl.startsWith('http')) {
-      map.set(item.id, { ...item, sourceType: 'real_job' });
+      const company = item.company || item.company_name || item.provider || (item.platforms && item.platforms[0]?.name) || 'Verified Employer';
+      map.set(item.id, { ...item, company, sourceType: 'real_job' });
     }
   });
 
@@ -49,7 +50,8 @@ export function getAllOpportunities() {
     if (!map.has(item.id)) {
       const norm = Opportunity.normalize(item, item.source || 'Curated Career Pathway Guide');
       if (norm.sourceUrl && norm.sourceUrl.startsWith('http')) {
-        map.set(item.id, { ...norm, sourceType: 'demo' });
+        const company = norm.company || norm.company_name || norm.provider || (norm.platforms && norm.platforms[0]?.name) || 'Verified Employer';
+        map.set(item.id, { ...norm, company, sourceType: 'demo' });
       }
     }
   });

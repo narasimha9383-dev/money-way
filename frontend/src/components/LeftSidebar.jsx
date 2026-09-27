@@ -1,33 +1,27 @@
 // src/components/LeftSidebar.jsx
-// Exact requested navigation structure:
-// Home
-// Search
-// Money Recommendation
-//     ├── Generator
-//     ├── Analyzer
-//     ├── Personal Match
-//     ├── Skill Mapper
-//     ├── Assistant Chat
-//     └── Comparison Matrix
-// Advisor
-// Profile
-
+// Section 23: Simple, intuitive primary navigation:
+// Home, Discover, Search, Nearby, Saved, Alerts, Profile + Tools
 import React, { useState } from 'react';
 import { 
   Home, 
+  Compass, 
   Search, 
+  MapPin, 
+  Bookmark, 
+  Bell, 
+  User, 
   Sparkles, 
-  User,
-  Bot,
-  SearchCode,
-  Target,
-  Brain,
-  MessageSquare,
-  Scale,
-  ChevronDown,
+  Bot, 
+  SearchCode, 
+  Target, 
+  Brain, 
+  MessageSquare, 
+  Scale, 
+  ChevronDown, 
   ChevronRight,
-  Bookmark,
-  CheckSquare
+  ShieldAlert,
+  LayoutDashboard,
+  Building2
 } from 'lucide-react';
 
 export default function LeftSidebar({
@@ -35,161 +29,144 @@ export default function LeftSidebar({
   onNavigateToTab,
   currentSubTab = 'generator',
   savedCount = 0,
-  compareCount = 0
+  unreadAlertsCount = 0
 }) {
-  const [recommendationsExpanded, setRecommendationsExpanded] = useState(true);
+  const [toolsExpanded, setToolsExpanded] = useState(false);
+
+  const primaryNav = [
+    { id: 'home', label: 'Home', icon: Home },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'detailsOfOrganization', label: 'Organization Details', icon: Building2 },
+    { id: 'search', label: 'Search', icon: Search },
+    { id: 'nearby', label: 'Jobs Near Me', icon: MapPin, highlight: true },
+    { id: 'saved', label: 'Saved Jobs', icon: Bookmark, badge: savedCount > 0 ? savedCount : null },
+    { id: 'alerts', label: 'Job Alerts', icon: Bell, badge: unreadAlertsCount > 0 ? unreadAlertsCount : null }
+  ];
 
   const subItems = [
-    { id: 'generator', label: 'Generator', icon: Bot, symbol: '├──' },
-    { id: 'analyzer', label: 'Analyzer', icon: SearchCode, symbol: '├──' },
-    { id: 'matcher', label: 'Personal Match', icon: Target, symbol: '├──' },
-    { id: 'mapper', label: 'Skill Mapper', icon: Brain, symbol: '├──' },
-    { id: 'assistant', label: 'Assistant Chat', icon: MessageSquare, symbol: '├──' },
-    { id: 'compare', label: 'Comparison Matrix', icon: Scale, symbol: '└──' }
+    { id: 'generator', label: 'Pathway Generator', icon: Bot },
+    { id: 'analyzer', label: 'Income Analyzer', icon: SearchCode },
+    { id: 'matcher', label: 'Personal Matcher', icon: Target },
+    { id: 'mapper', label: 'Skill Pathways', icon: Brain },
+    { id: 'assistant', label: 'Advisor Chat', icon: MessageSquare },
+    { id: 'compare', label: 'Opportunity Compare', icon: Scale }
   ];
 
   const isRecActive = currentTab === 'recommendations' || currentTab === 'money-recommendation';
 
   return (
     <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between py-6 px-4 bg-[#070c14]/90 border-r border-slate-800/80 min-h-[calc(100vh-61px)] select-none backdrop-blur-md">
-      {/* Navigation Menu */}
+      {/* Primary Navigation Menu */}
       <div className="space-y-1">
-        
-        {/* 1. Home */}
-        <button
-          onClick={() => onNavigateToTab('home')}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all group ${
-            currentTab === 'home'
-              ? 'bg-[#39E98A]/15 text-[#39E98A] font-semibold border border-[#39E98A]/30'
-              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-          }`}
-        >
-          <Home className={`w-4 h-4 ${currentTab === 'home' ? 'text-[#39E98A]' : 'text-slate-400 group-hover:text-white'}`} />
-          <span>Home</span>
-        </button>
+        <div className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">
+          Work Discovery
+        </div>
 
-        {/* 2. Search */}
-        <button
-          onClick={() => onNavigateToTab('search')}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all group ${
-            currentTab === 'search'
-              ? 'bg-[#39E98A]/15 text-[#39E98A] font-semibold border border-[#39E98A]/30'
-              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-          }`}
-        >
-          <Search className={`w-4 h-4 ${currentTab === 'search' ? 'text-[#39E98A]' : 'text-slate-400 group-hover:text-white'}`} />
-          <span>Search</span>
-        </button>
+        {primaryNav.map((item) => {
+          const Icon = item.icon;
+          const isActive = currentTab === item.id || 
+            (item.id === 'dashboard' && currentTab === 'profile') ||
+            (item.id === 'detailsOfOrganization' && currentTab === 'discover') ||
+            (item.id === 'discover' && currentTab === 'detailsOfOrganization');
+          return (
+            <button
+              key={item.id}
+              onClick={() => onNavigateToTab(item.id)}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all group cursor-pointer ${
+                isActive
+                  ? 'bg-[#39E98A]/15 text-[#39E98A] font-semibold border border-[#39E98A]/30 shadow-sm'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Icon className={`w-4 h-4 ${isActive ? 'text-[#39E98A]' : 'text-slate-400 group-hover:text-white'}`} />
+                <span>{item.label}</span>
+              </div>
+              {item.badge && (
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
 
-        {/* 3. Money Recommendation (Expandable Tree with 6 Sub-items) */}
-        <div className="pt-1">
+        {/* Secondary Exploration Tools */}
+        <div className="pt-6">
+          <div className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono flex items-center justify-between">
+            <span>Career Tools</span>
+            <button
+              onClick={() => setToolsExpanded(!toolsExpanded)}
+              className="text-slate-400 hover:text-white text-xs cursor-pointer"
+            >
+              {toolsExpanded ? 'Collapse' : 'Expand'}
+            </button>
+          </div>
+
           <button
             onClick={() => {
               onNavigateToTab('recommendations', 'generator');
-              setRecommendationsExpanded(true);
+              setToolsExpanded(true);
             }}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all group ${
+            className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-medium transition-all group cursor-pointer ${
               isRecActive
-                ? 'bg-[#39E98A]/15 text-[#39E98A] font-semibold border border-[#39E98A]/30'
-                : 'text-slate-300 hover:text-white hover:bg-white/[0.04]'
+                ? 'bg-emerald-500/10 text-emerald-300 font-semibold border border-emerald-500/20'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.03]'
             }`}
           >
-            <div className="flex items-center gap-3">
-              <Sparkles className={`w-4 h-4 ${isRecActive ? 'text-[#39E98A]' : 'text-emerald-400'}`} />
-              <span className="font-semibold">Money Recommendation</span>
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Income Intelligence</span>
             </div>
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                setRecommendationsExpanded(!recommendationsExpanded);
-              }}
-              className="p-1 hover:bg-white/10 rounded cursor-pointer"
-            >
-              {recommendationsExpanded ? (
-                <ChevronDown className="w-3.5 h-3.5 text-stone-400" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-              )}
-            </span>
+            {toolsExpanded ? <ChevronDown className="w-3.5 h-3.5 text-slate-500" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500" />}
           </button>
 
-          {/* Sub-tree */}
-          {recommendationsExpanded && (
-            <div className="pl-3 pr-1 py-1 space-y-0.5 mt-0.5 border-l-2 border-emerald-500/25 ml-5 font-mono">
-              {subItems.map(sub => {
-                const isSubActive = isRecActive && currentSubTab === sub.id;
+          {toolsExpanded && (
+            <div className="pl-6 pt-1 space-y-0.5 border-l border-slate-800 ml-5 my-1">
+              {subItems.map((sub) => {
                 const SubIcon = sub.icon;
+                const isSubActive = isRecActive && currentSubTab === sub.id;
                 return (
                   <button
                     key={sub.id}
                     onClick={() => onNavigateToTab('recommendations', sub.id)}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all text-left group cursor-pointer ${
+                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                       isSubActive
-                        ? 'bg-[#39E98A]/20 text-[#39E98A] font-bold border border-[#39E98A]/40'
-                        : 'text-stone-400 hover:text-white hover:bg-white/[0.04]'
+                        ? 'text-emerald-400 font-semibold bg-emerald-950/40'
+                        : 'text-slate-400 hover:text-white hover:bg-white/[0.02]'
                     }`}
                   >
-                    <span className="text-stone-500 font-mono text-[11px] shrink-0">{sub.symbol}</span>
-                    <SubIcon className={`w-3.5 h-3.5 shrink-0 ${isSubActive ? 'text-[#39E98A]' : 'text-stone-400 group-hover:text-white'}`} />
-                    <span className="truncate">{sub.label}</span>
+                    <SubIcon className="w-3 h-3 text-slate-500" />
+                    <span>{sub.label}</span>
                   </button>
                 );
               })}
             </div>
           )}
+
+          <button
+            onClick={() => onNavigateToTab('scam-center')}
+            className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-all mt-1 cursor-pointer ${
+              currentTab === 'scam-center'
+                ? 'bg-rose-500/15 text-rose-400 font-semibold border border-rose-500/30'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.03]'
+            }`}
+          >
+            <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+            <span>Scam Shield</span>
+          </button>
         </div>
-
-        {/* 4. Advisor */}
-        <button
-          onClick={() => onNavigateToTab('advisor')}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all group ${
-            currentTab === 'advisor'
-              ? 'bg-[#39E98A]/15 text-[#39E98A] font-semibold border border-[#39E98A]/30'
-              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-          }`}
-        >
-          <Sparkles className={`w-4 h-4 ${currentTab === 'advisor' ? 'text-[#39E98A]' : 'text-slate-400 group-hover:text-white'}`} />
-          <span>Advisor</span>
-        </button>
-
-        {/* 5. Profile */}
-        <button
-          onClick={() => onNavigateToTab('profile')}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all group ${
-            currentTab === 'profile'
-              ? 'bg-[#39E98A]/15 text-[#39E98A] font-semibold border border-[#39E98A]/30'
-              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-          }`}
-        >
-          <User className={`w-4 h-4 ${currentTab === 'profile' ? 'text-[#39E98A]' : 'text-slate-400 group-hover:text-white'}`} />
-          <span>Profile</span>
-        </button>
       </div>
 
-      {/* Quick shortcuts at bottom */}
-      <div className="pt-4 border-t border-white/[0.08] space-y-1 text-xs">
-        <button
-          onClick={() => onNavigateToTab('saved')}
-          className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-white/[0.04] cursor-pointer"
-        >
-          <div className="flex items-center gap-2">
-            <Bookmark className="w-3.5 h-3.5" />
-            <span>Saved Bookmarks</span>
-          </div>
-          {savedCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-[#39E98A] text-[10px] font-bold">
-              {savedCount}
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => onNavigateToTab('plans')}
-          className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-white/[0.04] cursor-pointer"
-        >
-          <CheckSquare className="w-3.5 h-3.5" />
-          <span>Action Progress</span>
-        </button>
+      {/* Trust Badge at Bottom */}
+      <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+        <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Real Job Verification Active</span>
+        </div>
+        <p className="text-[10px] text-slate-500">
+          Zero fabricated listings. Verified employer destinations only.
+        </p>
       </div>
     </aside>
   );

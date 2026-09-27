@@ -207,3 +207,295 @@ button {
     font-size: 16px !important; /* Prevents auto-zoom on iOS Safari */
   }
 }
+
+/* ── Bright / Light Mode Comprehensive Design System ── */
+html.light,
+html[data-theme="light"] {
+  --bg-main: #F8FAFC;
+  --text-main: #0F172A;
+  --text-muted: #475569;
+  --border-subtle: #E2E8F0;
+  color-scheme: light;
+}
+
+html.light body,
+html[data-theme="light"] body {
+  background-color: #F8FAFC !important;
+  color: #1E293B !important;
+}
+
+/* 1. Base App Surfaces & Layout Containers */
+html.light .bg-\[\#080A0C\],
+html.light .bg-\[\#070A09\],
+html.light .bg-\[\#070c14\],
+html.light .bg-\[\#0b1320\] {
+  background-color: #F8FAFC !important;
+}
+
+html.light header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
+}
+
+html.light aside {
+  background-color: #FFFFFF !important;
+  border-right: 1px solid #E2E8F0 !important;
+  box-shadow: 1px 0 3px 0 rgba(0, 0, 0, 0.02);
+}
+
+/* 2. Cards, Surfaces & Panels */
+html.light .bg-slate-900,
+html.light .bg-slate-950 {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.light .bg-slate-900\/95,
+html.light .bg-slate-900\/90,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-900\/70,
+html.light .bg-slate-900\/60,
+html.light .bg-slate-950\/90,
+html.light .bg-slate-950\/80,
+html.light .bg-slate-950\/70,
+html.light .bg-slate-950\/60 {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+}
+
+html.light .bg-slate-850 {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* Secondary surface inside cards */
+html.light .bg-slate-900\/80.p-3,
+html.light .bg-slate-950\/60,
+html.light .bg-slate-950\/70 {
+  background-color: #F1F5F9 !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* 3. Card Elevation & Hover States */
+html.light .rounded-2xl,
+html.light .rounded-3xl {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+}
+
+html.light .hover\:border-slate-700:hover,
+html.light .hover\:border-slate-750:hover,
+html.light .hover\:border-slate-800:hover {
+  border-color: #CBD5E1 !important;
+}
+
+/* 4. Typography Hierarchy & Readability */
+html.light h1,
+html.light h2,
+html.light h3,
+html.light h4,
+html.light h5,
+html.light h6 {
+  color: #0F172A !important;
+}
+
+html.light p {
+  color: #334155;
+}
+
+/* Target white text in content, but preserve text inside colored buttons and badges */
+html.light span.text-white,
+html.light p.text-white,
+html.light div.text-white {
+  color: #0F172A;
+}
+
+html.light .text-slate-100,
+html.light .text-slate-200 {
+  color: #1E293B !important;
+}
+
+html.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+html.light .text-slate-400 {
+  color: #64748B !important;
+}
+
+html.light .text-slate-500 {
+  color: #64748B !important;
+}
+
+/* Primary emerald text needs deeper contrast on bright canvas */
+html.light .text-\[\#39E98A\],
+html.light .text-emerald-400 {
+  color: #059669 !important;
+}
+
+html.light .text-teal-400 {
+  color: #0D9488 !important;
+}
+
+html.light .text-cyan-400 {
+  color: #0891B2 !important;
+}
+
+/* 5. Buttons & Controls */
+/* Primary Action Buttons (Green / Teal) */
+html.light button.bg-\[\#39E98A\],
+html.light button.bg-emerald-500,
+html.light .bg-\[\#39E98A\] {
+  background-color: #10B981 !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 4px 0 rgba(16, 185, 129, 0.25) !important;
+}
+
+html.light button.bg-\[\#39E98A\]:hover,
+html.light button.bg-emerald-500:hover {
+  background-color: #059669 !important;
+}
+
+/* Secondary Action Buttons (Previously dark slate) */
+html.light button.bg-slate-800,
+html.light .bg-slate-800 button {
+  background-color: #FFFFFF !important;
+  color: #1E293B !important;
+  border: 1px solid #CBD5E1 !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+html.light button.bg-slate-800:hover {
+  background-color: #F1F5F9 !important;
+  border-color: #94A3B8 !important;
+  color: #0F172A !important;
+}
+
+/* Ghost / Icon Buttons */
+html.light button.bg-slate-900 {
+  background-color: #FFFFFF !important;
+  color: #334155 !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+html.light button.bg-slate-900:hover {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+/* 6. Status Badges & Pills (Convert harsh dark blocks into clean pastel pills) */
+html.light .bg-emerald-950,
+html.light .bg-emerald-950\/80,
+html.light .bg-emerald-950\/40,
+html.light .bg-emerald-950\/30 {
+  background-color: #ECFDF5 !important;
+  color: #065F46 !important;
+  border-color: #A7F3D0 !important;
+}
+
+html.light .bg-teal-950,
+html.light .bg-teal-950\/40,
+html.light .bg-teal-950\/20 {
+  background-color: #F0FDFA !important;
+  color: #115E59 !important;
+  border-color: #99F6E4 !important;
+}
+
+html.light .bg-cyan-950 {
+  background-color: #ECFEFF !important;
+  color: #155E75 !important;
+  border-color: #A5F3FC !important;
+}
+
+html.light .bg-purple-950,
+html.light .bg-purple-950\/80,
+html.light .bg-purple-950\/50,
+html.light .bg-purple-950\/40 {
+  background-color: #FAF5FF !important;
+  color: #6B21A8 !important;
+  border-color: #E9D5FF !important;
+}
+
+html.light .bg-rose-950,
+html.light .bg-rose-950\/80,
+html.light .bg-rose-950\/40 {
+  background-color: #FFF1F2 !important;
+  color: #9F1239 !important;
+  border-color: #FECDD3 !important;
+}
+
+html.light .bg-amber-950,
+html.light .bg-amber-950\/40,
+html.light .bg-amber-950\/30 {
+  background-color: #FFFBEB !important;
+  color: #92400E !important;
+  border-color: #FDE68A !important;
+}
+
+/* 7. Active Navigation State in Sidebar & Menus */
+html.light .bg-\[\#39E98A\]\/15 {
+  background-color: #ECFDF5 !important;
+  color: #047857 !important;
+  border-color: #A7F3D0 !important;
+  font-weight: 600 !important;
+}
+
+html.light .bg-\[\#39E98A\]\/15 svg {
+  color: #059669 !important;
+}
+
+html.light .hover\:bg-white\/\[0\.04\]:hover,
+html.light .hover\:bg-white\/\[0\.05\]:hover {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
+/* 8. Inputs & Search Fields */
+html.light input,
+html.light textarea,
+html.light select {
+  color: #0F172A !important;
+  background-color: transparent !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* 9. Hero Banners & Cinematic Gradients in Bright Mode */
+html.light .bg-gradient-to-r.from-\[\#070e18\] {
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.95) 0%, rgba(241, 245, 249, 0.96) 60%, rgba(236, 253, 245, 0.90) 100%) !important;
+}
+
+html.light .bg-gradient-to-t.from-\[\#070e18\] {
+  background: linear-gradient(to top, #F8FAFC 0%, transparent 100%) !important;
+}
+
+/* 10. Borders & Dividers */
+html.light .border-slate-800,
+html.light .border-slate-800\/80,
+html.light .border-slate-800\/90,
+html.light .border-slate-750,
+html.light .border-slate-700,
+html.light .border-slate-700\/80,
+html.light .border-slate-700\/60 {
+  border-color: #E2E8F0 !important;
+}
+
+/* 11. Scrollbars */
+html.light ::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+

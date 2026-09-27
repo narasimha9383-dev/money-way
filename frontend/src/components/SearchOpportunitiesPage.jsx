@@ -1,8 +1,8 @@
 // src/components/SearchOpportunitiesPage.jsx
-// Dynamic, data-driven /search experience for Money Way Platform
-// Connected directly to backend API (/api/opportunities/search) with real data feeds.
+// Traditional Job Search Experience powered by the AI Discovery Bridge
+// Connected directly to canonical backend API (/api/jobs/search) with real verified feeds.
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Search,
   MapPin,
@@ -10,7 +10,6 @@ import {
   Coins,
   ExternalLink,
   Bookmark,
-  SlidersHorizontal,
   RotateCw,
   X,
   AlertCircle,
@@ -18,46 +17,37 @@ import {
   Navigation,
   CheckCircle2,
   Clock,
-  ShieldCheck
+  ShieldCheck,
+  Sparkles,
+  Zap,
+  ArrowRight,
+  ChevronDown,
+  Building2,
+  SlidersHorizontal,
+  Compass,
+  Globe
 } from 'lucide-react';
-import { searchOpportunities, refreshOpportunitiesFeedApi } from '../services/api.js';
+import {
+  searchJobsApi,
+  refreshOpportunitiesFeedApi,
+  reverseGeocodeApi,
+  geocodeLocationApi
+} from '../services/api.js';
 import { useAuth } from '../AuthContext.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
 
-// Multi-sector taxonomy covering all human skill domains
-const SECTOR_PILLS = [
-  { id: 'all', label: 'All Sectors', icon: '🌐', query: '' },
-  { id: 'games', label: 'Games & Sports', icon: '🎮', query: 'cricket' },
-  { id: 'trades', label: 'Physical Trades', icon: '⚡', query: 'electrician' },
-  { id: 'shows', label: 'Shows & Stage', icon: '🎭', query: 'sound engineer' },
-  { id: 'tech', label: 'Technology & Hardware', icon: '💻', query: 'cctv' },
-  { id: 'culinary', label: 'Culinary & Hospitality', icon: '🍳', query: 'cooking' },
-  { id: 'wellness', label: 'Healthcare & Fitness', icon: '🏥', query: 'fitness' },
-  { id: 'logistics', label: 'Logistics & Ops', icon: '📦', query: 'warehouse' }
-];
-
-// Natural multi-sector search query suggestions
-const SUGGESTED_SEARCH_QUERIES = [
-  'Cricket Coach',
-  'Commercial Electrician',
-  'Sound Engineer',
-  'Game QA Testing',
-  'Stage Actor',
-  'HVAC Technician',
-  'Pastry Chef',
-  'CCTV Specialist',
-  'Fitness Trainer',
-  'Warehouse Ops',
-  'Python Developer',
-  'Graphic Design'
-];
-
-// Quick location filters
-const QUICK_LOCATIONS = [
-  { label: 'Any Location', value: 'all' },
-  { label: 'Remote Only', value: 'remote' },
-  { label: 'Hyderabad', value: 'Hyderabad' },
-  { label: 'Bengaluru', value: 'Bengaluru' },
-  { label: 'Chennai', value: 'Chennai' }
+// Popular query suggestion chips
+const POPULAR_QUERIES = [
+  'Delivery Partner',
+  'Software Engineer',
+  'Data Entry Operator',
+  'Retail Sales Associate',
+  'Customer Support',
+  'Part-Time Gig',
+  'Graphic Designer',
+  'Warehouse Executive',
+  'Content Writer',
+  'Digital Marketing'
 ];
 
 // Helper to format relative time
@@ -69,10 +59,10 @@ function formatRelativeTime(dateString) {
   const mins = Math.floor(diffMs / 60000);
   if (mins < 1) return 'just now';
   if (mins === 1) return '1 minute ago';
-  if (mins < 60) return `${mins} minutes ago`;
+  if (mins < 60) return `${mins} mins ago`;
   const hours = Math.floor(mins / 60);
   if (hours === 1) return '1 hour ago';
-  if (hours < 24) return `${hours} hours ago`;
+  if (hours < 24) return `${hours} hrs ago`;
   const days = Math.floor(hours / 24);
   if (days === 1) return 'yesterday';
   if (days < 30) return `${days} days ago`;
@@ -81,83 +71,116 @@ function formatRelativeTime(dateString) {
   return `${months} months ago`;
 }
 
+// Safely extract string location from user profile (handles arrays like ["Online / Remote"] or strings)
+function extractCityString(profile) {
+  if (!profile) return '';
+  if (typeof profile.city === 'string' && profile.city.trim()) {
+    const c = profile.city.trim();
+    if (/^(\[.*\])$/.test(c)) {
+      try {
+        const parsed = JSON.parse(c);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const first = String(parsed[0] || '').trim();
+          if (/online|remote|wfh/i.test(first)) return '';
+          return first;
+        }
+      } catch {}
+    }
+    if (/online|remote|wfh/i.test(c)) return '';
+    return c;
+  }
+  if (Array.isArray(profile.location) && profile.location.length > 0) {
+    const loc = String(profile.location[0] || '').trim();
+    if (/online|remote|wfh/i.test(loc)) return '';
+    return loc;
+  }
+  if (typeof profile.location === 'string' && profile.location.trim()) {
+    if (/online|remote|wfh/i.test(profile.location)) return '';
+    return profile.location.trim();
+  }
+  return '';
+}
+
+// Safely determine initial remote work mode
+function extractWorkMode(profile) {
+  if (!profile) return 'all';
+  if (Array.isArray(profile.location)) {
+    if (profile.location.some(l => /online|remote|wfh/i.test(String(l)))) {
+      return 'remote';
+    }
+  } else if (typeof profile.location === 'string' && /online|remote|wfh/i.test(profile.location)) {
+    return 'remote';
+  }
+  if (typeof profile.city === 'string' && /online|remote|wfh/i.test(profile.city)) {
+    return 'remote';
+  }
+  return 'all';
+}
+
+// Safe string trim helper to prevent any TypeError: x.trim is not a function
+function safeTrim(val) {
+  if (typeof val === 'string') return val.trim();
+  if (Array.isArray(val)) {
+    return val.filter(Boolean).map(String).join(', ').trim();
+  }
+  if (val && typeof val === 'object') return '';
+  return val ? String(val).trim() : '';
+}
+
 export default function SearchOpportunitiesPage({
   userProfile,
   onSelectOpportunity,
+  onNavigateToTab,
   initialQuery = ''
 }) {
+  const { theme, isDark } = useTheme();
   const { user, savedIds, toggleSaveOpportunity, openAuthModal, isAuthenticated } = useAuth();
 
-  // Search input & active query state
-  const [searchInput, setSearchInput] = useState(initialQuery);
-  const [activeQuery, setActiveQuery] = useState(initialQuery);
+  // Determine initial work mode & location string safely
+  const initialMode = extractWorkMode(userProfile);
+  const initialCity = extractCityString(userProfile);
 
-  // Filter state
-  const [selectedSector, setSelectedSector] = useState('all');
-  const [selectedLocation, setSelectedLocation] = useState('all');
-  const [opportunityType, setOpportunityType] = useState('all');
-  const [category, setCategory] = useState('all');
-  const [paidOnly, setPaidOnly] = useState(false);
-  const [freshness, setFreshness] = useState('any');
-  const [sort, setSort] = useState('relevance');
+  // Traditional dual-input state: [What] + [Where]
+  const [whatInput, setWhatInput] = useState(() => safeTrim(initialQuery));
+  const [whereInput, setWhereInput] = useState(() => initialCity);
+
+  // Active query parameters dispatched to API
+  const [activeWhat, setActiveWhat] = useState(() => safeTrim(initialQuery));
+  const [activeWhere, setActiveWhere] = useState(() => initialMode === 'remote' ? 'Remote / Online' : initialCity);
+
+  // Traditional filter dropdown states
+  const [employmentType, setEmploymentType] = useState('all');
+  const [workMode, setWorkMode] = useState(() => initialMode); // 'all' | 'remote' | 'onsite'
+  const [experience, setExperience] = useState('all'); // 'all' | 'fresher' | 'experienced'
+  const [minSalary, setMinSalary] = useState(''); // '' | '15000' | '25000' | '50000'
+  const [sort, setSort] = useState('relevance'); // 'relevance' | 'newest' | 'distance'
   const [page, setPage] = useState(1);
-  const [showFiltersModal, setShowFiltersModal] = useState(false);
 
   // Data fetching state
-  const [opportunities, setOpportunities] = useState([]);
+  const [jobs, setJobs] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const [parsedFilters, setParsedFilters] = useState(null);
-  const [didYouMean, setDidYouMean] = useState(null);
-  const [lastUpdated, setLastUpdated] = useState(null);
-  const [lastFetchedAt, setLastFetchedAt] = useState(null);
+  const [totalPages, setTotalPages] = useState(1);
+  const [aiIntent, setAiIntent] = useState(null);
+  const [availableSources, setAvailableSources] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [error, setError] = useState(null);
   const [geoLocating, setGeoLocating] = useState(false);
+  const [userLocationName, setUserLocationName] = useState(null);
 
-  // Debounce search input (450ms for calm typing, zero shaking)
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      if (searchInput.trim() !== activeQuery) {
-        setActiveQuery(searchInput.trim());
-        setPage(1);
-      }
-    }, 450);
-    return () => clearTimeout(handler);
-  }, [searchInput, activeQuery]);
+  // Helper to determine if remote / online mode is active (bulletproof against non-strings)
+  const safeWhereStr = safeTrim(whereInput);
+  const isRemoteMode = workMode === 'remote' || /^(remote|online|wfh|work from home)$/i.test(safeWhereStr);
 
-  // Synchronize initialQuery if updated from parent/URL
-  useEffect(() => {
-    if (initialQuery !== undefined && initialQuery !== activeQuery) {
-      setSearchInput(initialQuery);
-      setActiveQuery(initialQuery);
-    }
-  }, [initialQuery]);
-
-  // Keep browser address bar in sync with active search query (e.g., /search?q=delivery)
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/search')) {
-        const currentUrl = new URL(window.location.href);
-        if (activeQuery) {
-          currentUrl.searchParams.set('q', activeQuery);
-        } else {
-          currentUrl.searchParams.delete('q');
-        }
-        const newPath = currentUrl.pathname + currentUrl.search;
-        if (window.location.pathname + window.location.search !== newPath) {
-          window.history.replaceState(null, '', newPath);
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }, [activeQuery]);
-
-  // Execute Search from API
-  const performSearch = useCallback(async (isLoadMore = false, targetPage = 1) => {
+  // Main search executor connecting to Canonical Job API (/api/jobs/search)
+  const performSearch = useCallback(async ({
+    targetWhat = safeTrim(whatInput),
+    targetWhere = safeTrim(whereInput),
+    targetWorkMode = workMode,
+    isLoadMore = false,
+    targetPage = 1
+  } = {}) => {
     if (isLoadMore) {
       setLoadingMore(true);
     } else {
@@ -166,103 +189,272 @@ export default function SearchOpportunitiesPage({
     setError(null);
 
     try {
-      const isRemote = selectedLocation === 'remote';
-      const locParam = selectedLocation !== 'all' && !isRemote ? selectedLocation : '';
+      const cleanWhat = safeTrim(targetWhat);
+      const cleanWhere = safeTrim(targetWhere);
+      const isRemote = targetWorkMode === 'remote' || /^(remote|online|wfh|work from home)$/i.test(cleanWhere);
+      const isFullOnsite = targetWorkMode === 'onsite';
 
       const params = {
-        q: activeQuery,
-        location: locParam,
-        remote: isRemote ? 'true' : '',
-        opportunityType: opportunityType !== 'all' ? opportunityType : '',
-        category: category !== 'all' ? category : '',
-        paidOnly: paidOnly ? 'true' : '',
-        freshness: freshness !== 'any' ? freshness : '',
+        q: cleanWhat,
+        location: isRemote ? '' : cleanWhere,
+        remote: isRemote ? 'true' : isFullOnsite ? 'false' : '',
+        employmentType: employmentType !== 'all' ? employmentType : '',
+        experience: experience !== 'all' ? experience : '',
+        minPay: minSalary || '',
         sort,
         page: targetPage,
-        limit: 18
+        limit: 18,
+        profile: userProfile ? { ...userProfile, city: isRemote ? '' : cleanWhere } : undefined
       };
 
-      const res = await searchOpportunities(params);
+      const res = await searchJobsApi(params);
 
-      const items = Array.isArray(res?.opportunities) ? res.opportunities : [];
+      const items = Array.isArray(res?.jobs) ? res.jobs : [];
       if (isLoadMore) {
-        setOpportunities(prev => [...prev, ...items]);
+        setJobs(prev => [...prev, ...items]);
       } else {
-        setOpportunities(items);
+        setJobs(items);
       }
 
       setTotalCount(typeof res?.total === 'number' ? res.total : items.length);
-      setHasMore(Boolean(res?.hasMore));
-      setParsedFilters(res?.parsedFilters || null);
-      setDidYouMean(res?.didYouMean || null);
-      if (res?.lastUpdated) {
-        setLastUpdated(res.lastUpdated);
+      setTotalPages(res?.totalPages || 1);
+      if (res?.intent) {
+        setAiIntent(res.intent);
       }
-      setLastFetchedAt(new Date().toLocaleTimeString());
+      if (Array.isArray(res?.sources)) {
+        setAvailableSources(res.sources);
+      }
     } catch (err) {
-      console.error('Search API request error:', err);
-      setError('Unable to retrieve opportunities from the server right now.');
+      console.error('Job search API request error:', err);
+      setError('Unable to load verified jobs from the server right now.');
       if (!isLoadMore) {
-        setOpportunities([]);
+        setJobs([]);
         setTotalCount(0);
       }
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [activeQuery, selectedLocation, opportunityType, category, paidOnly, freshness, sort]);
+  }, [whatInput, whereInput, employmentType, workMode, experience, minSalary, sort, userProfile]);
 
-  // Re-run search when query or filters change
+  // Initial mount: load real jobs by default immediately
   useEffect(() => {
-    performSearch(false, 1);
-  }, [performSearch]);
+    performSearch({
+      targetWhat: activeWhat,
+      targetWhere: activeWhere,
+      targetWorkMode: workMode,
+      isLoadMore: false,
+      targetPage: 1
+    });
+  }, [employmentType, workMode, experience, minSalary, sort]);
 
-  // Handle explicit form submit (pressing Enter or clicking Search)
+  // Sync initialQuery prop changes (e.g. from homepage search or address bar)
+  useEffect(() => {
+    if (initialQuery !== undefined && initialQuery !== activeWhat) {
+      const cleanInit = safeTrim(initialQuery);
+      setWhatInput(cleanInit);
+      setActiveWhat(cleanInit);
+      setPage(1);
+      performSearch({
+        targetWhat: cleanInit,
+        targetWhere: safeTrim(whereInput),
+        targetWorkMode: workMode,
+        isLoadMore: false,
+        targetPage: 1
+      });
+    }
+  }, [initialQuery]);
+
+  // Keep browser address bar in sync: /search?q=...&loc=...
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/search')) {
+        const url = new URL(window.location.href);
+        if (activeWhat) url.searchParams.set('q', activeWhat);
+        else url.searchParams.delete('q');
+
+        if (activeWhere && activeWhere !== 'Remote / Online') url.searchParams.set('location', activeWhere);
+        else url.searchParams.delete('location');
+
+        if (workMode === 'remote') url.searchParams.set('remote', 'true');
+        else url.searchParams.delete('remote');
+
+        const newPath = url.pathname + url.search;
+        if (window.location.pathname + window.location.search !== newPath) {
+          window.history.replaceState(null, '', newPath);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [activeWhat, activeWhere, workMode]);
+
+  // Dedicated switch to 100% Remote / Online mode
+  const handleSetRemoteMode = () => {
+    setWorkMode('remote');
+    setWhereInput('');
+    setActiveWhere('Remote / Online');
+    setPage(1);
+    performSearch({
+      targetWhat: safeTrim(whatInput),
+      targetWhere: '',
+      targetWorkMode: 'remote',
+      isLoadMore: false,
+      targetPage: 1
+    });
+  };
+
+  // Dedicated switch to Physical City / In-Person mode
+  const handleSetCityMode = () => {
+    setWorkMode('all');
+    const defaultCity = extractCityString(userProfile);
+    setWhereInput(defaultCity);
+    setActiveWhere(defaultCity);
+    setPage(1);
+    performSearch({
+      targetWhat: safeTrim(whatInput),
+      targetWhere: defaultCity,
+      targetWorkMode: 'all',
+      isLoadMore: false,
+      targetPage: 1
+    });
+  };
+
+  // Handle explicit form submit (pressing Enter or clicking Find Jobs)
   const handleSearchSubmit = (e) => {
     if (e) e.preventDefault();
-    setActiveQuery(searchInput.trim());
-    setPage(1);
+    const cleanWhat = safeTrim(whatInput);
+    const cleanWhere = safeTrim(whereInput);
+    const isTargetRemote = workMode === 'remote' || /^(remote|online|wfh|work from home)$/i.test(cleanWhere);
+
+    if (isTargetRemote) {
+      setWorkMode('remote');
+      setWhereInput('');
+      setActiveWhat(cleanWhat);
+      setActiveWhere('Remote / Online');
+      setPage(1);
+      performSearch({
+        targetWhat: cleanWhat,
+        targetWhere: '',
+        targetWorkMode: 'remote',
+        isLoadMore: false,
+        targetPage: 1
+      });
+    } else {
+      setActiveWhat(cleanWhat);
+      setActiveWhere(cleanWhere);
+      setPage(1);
+      performSearch({
+        targetWhat: cleanWhat,
+        targetWhere: cleanWhere,
+        targetWorkMode: workMode === 'remote' ? 'all' : workMode,
+        isLoadMore: false,
+        targetPage: 1
+      });
+    }
+  };
+
+  // Real GPS Geolocation with reverse geocoding to detect exact town / city
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+    setGeoLocating(true);
+    setWorkMode('all'); // Switching to GPS automatically sets in-person location
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await reverseGeocodeApi(latitude, longitude);
+          let detectedLoc = '';
+          if (res?.success && res.location?.city) {
+            detectedLoc = res.location.area
+              ? `${res.location.area}, ${res.location.city}`
+              : res.location.city;
+          } else if (res?.displayName) {
+            detectedLoc = res.displayName;
+          } else {
+            detectedLoc = 'Near Me';
+          }
+          setWhereInput(detectedLoc);
+          setActiveWhere(detectedLoc);
+          setUserLocationName(detectedLoc);
+          setPage(1);
+          performSearch({
+            targetWhat: safeTrim(whatInput),
+            targetWhere: detectedLoc,
+            targetWorkMode: 'all',
+            isLoadMore: false,
+            targetPage: 1
+          });
+        } catch (err) {
+          console.error('Reverse geocode error:', err);
+          setWhereInput('Near Me');
+          setActiveWhere('Near Me');
+          performSearch({
+            targetWhat: safeTrim(whatInput),
+            targetWhere: 'Near Me',
+            targetWorkMode: 'all',
+            isLoadMore: false,
+            targetPage: 1
+          });
+        } finally {
+          setGeoLocating(false);
+        }
+      },
+      (err) => {
+        setGeoLocating(false);
+        console.warn('Geolocation denied or failed:', err);
+        alert('Could not access your location. Please type your city or area manually.');
+      },
+      { timeout: 8000, enableHighAccuracy: true }
+    );
   };
 
   // Load more pagination handler
   const handleLoadMore = () => {
     const nextPage = page + 1;
     setPage(nextPage);
-    performSearch(true, nextPage);
+    performSearch({
+      targetWhat: activeWhat,
+      targetWhere: activeWhere,
+      isLoadMore: true,
+      targetPage: nextPage
+    });
   };
 
-  // Trigger search term suggestion
+  // Handle quick suggestion click
   const handleSuggestionClick = (queryText) => {
-    setSearchInput(queryText);
-    setActiveQuery(queryText);
+    setWhatInput(queryText);
+    setActiveWhat(queryText);
     setPage(1);
+    performSearch({
+      targetWhat: queryText,
+      targetWhere: activeWhere,
+      isLoadMore: false,
+      targetPage: 1
+    });
   };
 
-  // Clear all filters and query
+  // Clear all filters
   const handleClearFilters = () => {
-    setSearchInput('');
-    setActiveQuery('');
-    setSelectedSector('all');
-    setSelectedLocation('all');
-    setOpportunityType('all');
-    setCategory('all');
-    setPaidOnly(false);
-    setFreshness('any');
+    setWhatInput('');
+    setWhereInput('');
+    setActiveWhat('');
+    setActiveWhere('');
+    setEmploymentType('all');
+    setWorkMode('all');
+    setExperience('all');
+    setMinSalary('');
     setSort('relevance');
     setPage(1);
-  };
-
-  // Sector Ribbon filter click handler
-  const handleSectorClick = (sector) => {
-    setSelectedSector(sector.id);
-    if (sector.id === 'all') {
-      setSearchInput('');
-      setActiveQuery('');
-    } else {
-      setSearchInput(sector.query);
-      setActiveQuery(sector.query);
-    }
-    setPage(1);
+    performSearch({
+      targetWhat: '',
+      targetWhere: '',
+      isLoadMore: false,
+      targetPage: 1
+    });
   };
 
   // Live Refresh Feed from external data sources
@@ -270,7 +462,12 @@ export default function SearchOpportunitiesPage({
     setRefreshLoading(true);
     try {
       await refreshOpportunitiesFeedApi();
-      await performSearch(false, 1);
+      await performSearch({
+        targetWhat: activeWhat,
+        targetWhere: activeWhere,
+        isLoadMore: false,
+        targetPage: 1
+      });
     } catch (err) {
       console.error('Feed refresh error:', err);
     } finally {
@@ -278,75 +475,47 @@ export default function SearchOpportunitiesPage({
     }
   };
 
-  // Geolocation trigger ("Near Me" with browser permission)
-  const handleNearMe = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.');
-      return;
-    }
-    setGeoLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setGeoLocating(false);
-        const { latitude, longitude } = position.coords;
-        if (latitude > 16.5 && latitude < 18.5) {
-          setSelectedLocation('Hyderabad');
-        } else if (latitude > 12.0 && latitude < 13.5) {
-          setSelectedLocation('Bengaluru');
-        } else if (latitude > 12.5 && latitude < 14.0 && longitude > 79.5) {
-          setSelectedLocation('Chennai');
-        } else {
-          setSelectedLocation('Hyderabad');
-        }
-      },
-      () => {
-        setGeoLocating(false);
-        alert('Could not access current location. Please choose a city manually.');
-      }
-    );
-  };
-
-  const activeFiltersCount = [
-    selectedLocation !== 'all',
-    opportunityType !== 'all',
-    category !== 'all',
-    paidOnly,
-    freshness !== 'any',
-    sort !== 'relevance'
-  ].filter(Boolean).length;
+  const hasActiveFilters =
+    employmentType !== 'all' ||
+    workMode !== 'all' ||
+    experience !== 'all' ||
+    Boolean(minSalary) ||
+    sort !== 'relevance' ||
+    Boolean(activeWhat) ||
+    Boolean(activeWhere);
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6 pb-20 select-none">
-      
+    <div className="w-full max-w-7xl mx-auto space-y-6 pb-24 select-none">
+
       {/* ──────────────────────────────────────────────────────────── */}
-      {/* 1. TOP HEADER & SYNC BAR                                     */}
+      {/* 1. TOP HEADER & VERIFICATION STATUS BADGE                    */}
       {/* ──────────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/70 border border-emerald-800/60 text-emerald-400 text-xs font-semibold mb-2">
-            <Search className="w-3.5 h-3.5" />
-            <span>Live Opportunity Search</span>
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Verified Work Discovery Engine</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Search Opportunities
+            Find Real Jobs & Opportunities
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Real jobs, freelance projects, and verified partner listings from live backend feeds.
+            Search verified employers, delivery networks, and direct application portals with zero fabricated listings.
           </p>
         </div>
 
-        {/* Live Freshness & Sync Button */}
+        {/* Live Status & Refresh Button */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Updated: {formatRelativeTime(lastUpdated)}</span>
+            <span>Direct Live Feeds</span>
           </div>
 
           <button
             onClick={handleRefreshFeed}
             disabled={refreshLoading || loading}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition-all cursor-pointer disabled:opacity-50"
-            title="Fetch fresh opportunities from partner feeds"
+            title="Refresh verified job feeds"
           >
             <RotateCw className={`w-3.5 h-3.5 ${refreshLoading ? 'animate-spin text-emerald-400' : 'text-slate-400'}`} />
             <span>{refreshLoading ? 'Refreshing…' : 'Refresh'}</span>
@@ -355,633 +524,665 @@ export default function SearchOpportunitiesPage({
       </div>
 
       {/* ──────────────────────────────────────────────────────────── */}
-      {/* 2. DEVELOPER DEBUG INDICATOR (Step 11 requirement)          */}
+      {/* 2. TRADITIONAL SEARCH BAR CONTAINER (Indeed / LinkedIn Style) */}
       {/* ──────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5 rounded-xl bg-slate-950/90 border border-slate-800 text-[11px] font-mono text-slate-400">
-        <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          Search source: API
-        </span>
-        <span>Query: <strong className="text-white">{activeQuery ? `"${activeQuery}"` : '(all)'}</strong></span>
-        <span>Results: <strong className="text-white">{totalCount}</strong></span>
-        <span>Last fetched: <strong className="text-white">{lastFetchedAt || 'Not fetched yet'}</strong></span>
-      </div>
-
-      {/* ──────────────────────────────────────────────────────────── */}
-      {/* 3. SECTOR SELECTOR RIBBON                                     */}
-      {/* ──────────────────────────────────────────────────────────── */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-            Explore Skills By Sector & Organization Role
-          </span>
-          <span className="text-[11px] text-slate-500 hidden sm:inline">
-            Roles across Games, Trades, Shows, Hardware, Health & Tech
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {SECTOR_PILLS.map((sector) => {
-            const isSectorActive = selectedSector === sector.id || 
-              (sector.id !== 'all' && activeQuery.toLowerCase().includes(sector.query.toLowerCase()));
-
-            return (
-              <button
-                key={sector.id}
-                type="button"
-                onClick={() => handleSectorClick(sector)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium shrink-0 transition-all cursor-pointer ${
-                  isSectorActive
-                    ? 'bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/20'
-                    : 'bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white'
+      <form
+        onSubmit={handleSearchSubmit}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        className={`p-2 sm:p-2.5 rounded-2xl border space-y-2.5 transition-all ${
+          isDark
+            ? 'bg-slate-900 border-slate-800 shadow-2xl shadow-black/40'
+            : 'bg-white border-slate-200 shadow-xl shadow-slate-200/60'
+        }`}
+      >
+        <div className="flex flex-col md:flex-row items-stretch gap-2">
+          {/* Field 1: WHAT (Job title, keywords, company) */}
+          <div className={`relative flex-1 flex items-center rounded-xl border focus-within:border-emerald-500/80 focus-within:ring-1 focus-within:ring-emerald-500/30 transition-all ${
+            isDark ? 'bg-slate-950/80 border-slate-800/80' : 'bg-slate-50 border-slate-200'
+          }`}>
+            <div className="pl-4 text-emerald-500 pointer-events-none">
+              <Search className="w-5 h-5" />
+            </div>
+            <div className="flex flex-col flex-1 pl-3 pr-8 py-2.5">
+              <span className={`text-[10px] uppercase font-bold tracking-wider ${
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              }`}>
+                What
+              </span>
+              <input
+                type="text"
+                id="search-what-input"
+                name="search_what_query"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-lpignore="true"
+                value={whatInput}
+                onChange={(e) => setWhatInput(e.target.value)}
+                placeholder="Job title, skills, or company..."
+                className={`w-full bg-transparent text-sm sm:text-base outline-none font-medium ${
+                  isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'
                 }`}
+              />
+            </div>
+            {whatInput && (
+              <button
+                type="button"
+                onClick={() => setWhatInput('')}
+                className="absolute right-3 p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                title="Clear job title"
               >
-                <span>{sector.icon}</span>
-                <span>{sector.label}</span>
+                <X className="w-4 h-4" />
               </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ──────────────────────────────────────────────────────────── */}
-      {/* 4. SEARCH BAR                                                */}
-      {/* ──────────────────────────────────────────────────────────── */}
-      <form onSubmit={handleSearchSubmit} className="relative">
-        <label htmlFor="opportunity-search-input" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-          What human skill or organization role are you looking for?
-        </label>
-        <div className="relative flex items-center">
-          <div className="absolute left-4 text-emerald-400 pointer-events-none">
-            <Search className="w-5 h-5 stroke-[2.2]" />
+            )}
           </div>
-          <input
-            id="opportunity-search-input"
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder='Search any skill e.g. "cricket coach", "commercial electrician", "sound engineer", "welding", "game testing"...'
-            className="w-full pl-12 pr-36 py-4 rounded-2xl bg-slate-900/90 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm sm:text-base text-white placeholder-slate-500 shadow-xl transition-all outline-none"
-          />
-          {searchInput && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchInput('');
-                setActiveQuery('');
-                setPage(1);
-              }}
-              className="absolute right-24 text-slate-400 hover:text-white p-1 rounded-md cursor-pointer"
-              title="Clear search input"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+
+          {/* Traditional Divider */}
+          <div className={`hidden md:block w-px my-1 ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+
+          {/* Field 2: WHERE (City or 100% Remote / Online) */}
+          <div className={`relative flex-1 flex flex-col justify-center px-3.5 py-2 rounded-xl border focus-within:border-emerald-500/80 focus-within:ring-1 focus-within:ring-emerald-500/30 transition-all ${
+            isDark ? 'bg-slate-950/80 border-slate-800/80' : 'bg-slate-50 border-slate-200'
+          }`}>
+            {/* Header row with Label & Quick Mode Toggle */}
+            <div className="flex items-center justify-between pb-0.5">
+              <span className={`text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 ${
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              }`}>
+                {isRemoteMode ? <Globe className="w-3 h-3 text-teal-400" /> : <MapPin className="w-3 h-3 text-emerald-500" />}
+                Where
+              </span>
+
+              {/* Mode switch pills */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleSetCityMode}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                    !isRemoteMode
+                      ? isDark ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'
+                  }`}
+                  title="Search by city or area"
+                >
+                  📍 In-Person
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSetRemoteMode}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                    isRemoteMode
+                      ? isDark ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40' : 'bg-teal-100 text-teal-800 border border-teal-300'
+                      : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'
+                  }`}
+                  title="Search 100% remote or online work"
+                >
+                  🌐 Remote / Online
+                </button>
+              </div>
+            </div>
+
+            {/* Content row depending on Remote or City mode */}
+            {isRemoteMode ? (
+              <div className="flex items-center justify-between py-1 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className={`p-1 rounded-md shrink-0 ${isDark ? 'bg-teal-500/20 text-teal-300' : 'bg-teal-100 text-teal-700'}`}>
+                    <Globe className="w-4 h-4" />
+                  </div>
+                  <div className="truncate">
+                    <span className={`text-sm font-bold ${isDark ? 'text-teal-300' : 'text-teal-800'}`}>
+                      100% Remote / Online
+                    </span>
+                    <span className={`hidden sm:inline-block ml-2 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Work from anywhere
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSetCityMode}
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border shrink-0 transition-colors cursor-pointer ${
+                    isDark
+                      ? 'bg-slate-900 hover:bg-slate-850 text-slate-300 border-slate-800 hover:text-white'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-xs'
+                  }`}
+                >
+                  Switch to City
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 py-0.5">
+                <input
+                  type="text"
+                  id="search-where-input"
+                  name="search_where_location"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                  data-lpignore="true"
+                  value={typeof whereInput === 'string' ? whereInput : ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setWhereInput(val);
+                    if (typeof val === 'string' && /^(remote|online|wfh|work from home)$/i.test(val.trim())) {
+                      handleSetRemoteMode();
+                    }
+                  }}
+                  placeholder="City, state, or area (e.g. Bangalore, Mumbai)..."
+                  className={`w-full bg-transparent text-sm sm:text-base outline-none font-medium ${
+                    isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'
+                  }`}
+                />
+
+                {Boolean(typeof whereInput === 'string' && whereInput) && (
+                  <button
+                    type="button"
+                    onClick={() => setWhereInput('')}
+                    className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                    title="Clear location"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+
+                {/* GPS Detect Location Button */}
+                <button
+                  type="button"
+                  onClick={handleDetectLocation}
+                  disabled={geoLocating}
+                  className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer shrink-0 disabled:opacity-50 ${
+                    isDark
+                      ? 'bg-slate-900 hover:bg-slate-850 border-slate-700/60 text-slate-300 hover:text-emerald-400'
+                      : 'bg-white hover:bg-slate-100 border-slate-300 text-slate-700 hover:text-emerald-700 shadow-xs'
+                  }`}
+                  title="Detect my current location"
+                >
+                  <Navigation className={`w-3.5 h-3.5 ${geoLocating ? 'animate-spin text-emerald-500' : 'text-emerald-500'}`} />
+                  <span className="hidden sm:inline">{geoLocating ? 'GPS…' : 'Near Me'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Action Button: Find Jobs */}
           <button
             type="submit"
-            className="absolute right-12 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-colors cursor-pointer"
+            id="search-find-jobs-btn"
+            disabled={loading}
+            className="px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer shrink-0 disabled:opacity-50"
           >
-            Search
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowFiltersModal(!showFiltersModal)}
-            className={`absolute right-3 p-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeFiltersCount > 0
-                ? 'bg-emerald-950 border-emerald-700 text-emerald-300'
-                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white'
-            }`}
-            title="Filter search"
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            {activeFiltersCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-bold flex items-center justify-center">
-                {activeFiltersCount}
-              </span>
+            {loading ? (
+              <>
+                <RotateCw className="w-4 h-4 animate-spin text-slate-950" />
+                <span>Searching…</span>
+              </>
+            ) : (
+              <>
+                <Search className="w-4 h-4 stroke-[2.5]" />
+                <span>Find Jobs</span>
+              </>
             )}
           </button>
         </div>
 
-        {/* Searching feedback */}
-        {loading && (
-          <div className="absolute -bottom-5 left-4 text-[11px] text-emerald-400 flex items-center gap-1.5">
-            <RotateCw className="w-3 h-3 animate-spin" />
-            <span>Searching opportunities…</span>
-          </div>
-        )}
-      </form>
+        {/* ──────────────────────────────────────────────────────────── */}
+        {/* TRADITIONAL QUICK FILTER PILLS & SELECTORS                  */}
+        {/* ──────────────────────────────────────────────────────────── */}
+        <div className={`flex flex-wrap items-center gap-2 pt-1 border-t text-xs ${
+          isDark ? 'border-slate-800/60' : 'border-slate-100'
+        }`}>
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+            Filters:
+          </span>
 
-      {/* ──────────────────────────────────────────────────────────── */}
-      {/* 4. REAL QUERY SUGGESTIONS                                    */}
-      {/* ──────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-400">
-        <span className="text-[11px] font-semibold text-slate-500 mr-1">Quick searches:</span>
-        {SUGGESTED_SEARCH_QUERIES.map((queryText) => (
-          <button
-            key={queryText}
-            type="button"
-            onClick={() => handleSuggestionClick(queryText)}
-            className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all cursor-pointer ${
-              activeQuery.toLowerCase() === queryText.toLowerCase()
-                ? 'bg-emerald-950 border-emerald-700 text-emerald-300 font-semibold'
-                : 'bg-slate-900/80 hover:bg-slate-800 border-slate-800 hover:border-slate-700 text-slate-300 hover:text-emerald-300'
-            }`}
-          >
-            {queryText}
-          </button>
-        ))}
-      </div>
-
-      {/* ──────────────────────────────────────────────────────────── */}
-      {/* 5. LOCATION QUICK PILLS & GEOLOCATION                        */}
-      {/* ──────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
-        <span className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
-          <MapPin className="w-3 h-3" /> Location:
-        </span>
-
-        {QUICK_LOCATIONS.map((loc) => {
-          const isActive = selectedLocation === loc.value;
-          return (
-            <button
-              key={loc.value}
-              type="button"
-              onClick={() => setSelectedLocation(loc.value)}
-              className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition-all cursor-pointer ${
-                isActive
-                  ? 'bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold'
-                  : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
+          {/* Job Type Dropdown */}
+          <div className="relative">
+            <select
+              value={employmentType}
+              onChange={(e) => {
+                setEmploymentType(e.target.value);
+                setPage(1);
+              }}
+              className={`py-1.5 pl-3 pr-7 rounded-lg border text-xs font-medium appearance-none cursor-pointer outline-none transition-all ${
+                employmentType !== 'all'
+                  ? isDark ? 'bg-emerald-950/80 border-emerald-700 text-emerald-300 font-semibold' : 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold'
+                  : isDark ? 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
               }`}
             >
-              {loc.label}
-            </button>
-          );
-        })}
+              <option value="all">Work Type: All</option>
+              <option value="Full-time">Full-Time</option>
+              <option value="Part-time">Part-Time</option>
+              <option value="Gig">Gig / Delivery</option>
+              <option value="Internship">Internship</option>
+              <option value="Contract">Contract</option>
+            </select>
+            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
 
-        <button
-          type="button"
-          onClick={handleNearMe}
-          disabled={geoLocating}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-300 hover:border-emerald-700/60 font-medium shrink-0 transition-all cursor-pointer disabled:opacity-50"
-          title="Detect city via browser geolocation"
-        >
-          <Navigation className={`w-3.5 h-3.5 ${geoLocating ? 'animate-spin text-emerald-400' : 'text-emerald-400'}`} />
-          <span>{geoLocating ? 'Detecting…' : 'Near Me'}</span>
-        </button>
-      </div>
+          {/* Work Mode Dropdown */}
+          <div className="relative">
+            <select
+              value={workMode}
+              onChange={(e) => {
+                setWorkMode(e.target.value);
+                setPage(1);
+              }}
+              className={`py-1.5 pl-3 pr-7 rounded-lg border text-xs font-medium appearance-none cursor-pointer outline-none transition-all ${
+                workMode !== 'all'
+                  ? isDark ? 'bg-emerald-950/80 border-emerald-700 text-emerald-300 font-semibold' : 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold'
+                  : isDark ? 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <option value="all">Mode: Any</option>
+              <option value="remote">Remote Only</option>
+              <option value="onsite">On-Site</option>
+            </select>
+            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
 
-      {/* ──────────────────────────────────────────────────────────── */}
-      {/* 6. ADVANCED FILTERS MODAL / EXPANDABLE DRAWER                */}
-      {/* ──────────────────────────────────────────────────────────── */}
-      {showFiltersModal && (
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-2xl">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2 text-sm font-bold text-white">
-              <Filter className="w-4 h-4 text-emerald-400" />
-              <span>Advanced Search Filters</span>
-            </div>
+          {/* Experience Level Dropdown */}
+          <div className="relative">
+            <select
+              value={experience}
+              onChange={(e) => {
+                setExperience(e.target.value);
+                setPage(1);
+              }}
+              className={`py-1.5 pl-3 pr-7 rounded-lg border text-xs font-medium appearance-none cursor-pointer outline-none transition-all ${
+                experience !== 'all'
+                  ? isDark ? 'bg-emerald-950/80 border-emerald-700 text-emerald-300 font-semibold' : 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold'
+                  : isDark ? 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <option value="all">Experience: Any</option>
+              <option value="fresher">Fresher / Entry-Level</option>
+              <option value="experienced">Experienced</option>
+            </select>
+            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Min Salary Dropdown */}
+          <div className="relative">
+            <select
+              value={minSalary}
+              onChange={(e) => {
+                setMinSalary(e.target.value);
+                setPage(1);
+              }}
+              className={`py-1.5 pl-3 pr-7 rounded-lg border text-xs font-medium appearance-none cursor-pointer outline-none transition-all ${
+                minSalary
+                  ? isDark ? 'bg-emerald-950/80 border-emerald-700 text-emerald-300 font-semibold' : 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold'
+                  : isDark ? 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <option value="">Salary: Any</option>
+              <option value="15000">₹15,000+ / mo</option>
+              <option value="25000">₹25,000+ / mo</option>
+              <option value="35000">₹35,000+ / mo</option>
+              <option value="50000">₹50,000+ / mo</option>
+            </select>
+            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Sort By Dropdown */}
+          <div className="relative">
+            <select
+              value={sort}
+              onChange={(e) => {
+                setSort(e.target.value);
+                setPage(1);
+              }}
+              className={`py-1.5 pl-3 pr-7 rounded-lg border text-xs font-medium appearance-none cursor-pointer outline-none transition-all ${
+                isDark ? 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <option value="relevance">Sort: Best Match (AI)</option>
+              <option value="newest">Sort: Newest First</option>
+              <option value="distance">Sort: Nearest Distance</option>
+            </select>
+            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Reset Filters */}
+          {hasActiveFilters && (
             <button
               type="button"
               onClick={handleClearFilters}
-              className="text-xs text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
+              className="text-xs text-rose-500 hover:text-rose-600 font-medium ml-auto flex items-center gap-1 cursor-pointer transition-colors"
             >
-              Reset Filters
+              <X className="w-3.5 h-3.5" />
+              <span>Reset</span>
             </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-            {/* Opportunity Type */}
-            <div>
-              <label className="block text-slate-400 font-medium mb-1.5">Opportunity Type</label>
-              <select
-                value={opportunityType}
-                onChange={(e) => setOpportunityType(e.target.value)}
-                className="w-full py-2 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-emerald-500 outline-none cursor-pointer"
-              >
-                <option value="all">All Types</option>
-                <option value="Part-time">Part-Time</option>
-                <option value="Freelance">Freelance</option>
-                <option value="Gig">Gig Work</option>
-                <option value="Internship">Internship</option>
-                <option value="Full-time">Full-Time</option>
-              </select>
-            </div>
-
-            {/* Category */}
-            <div>
-              <label className="block text-slate-400 font-medium mb-1.5">Category</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full py-2 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-emerald-500 outline-none cursor-pointer"
-              >
-                <option value="all">All Categories</option>
-                <option value="Part-time">Part-time</option>
-                <option value="Remote">Remote</option>
-                <option value="Freelance">Freelance</option>
-                <option value="Gig">Gig Work</option>
-                <option value="Internship">Internship</option>
-                <option value="Local service">Local Service</option>
-                <option value="Skill-Based">Skill-Based</option>
-              </select>
-            </div>
-
-            {/* Freshness */}
-            <div>
-              <label className="block text-slate-400 font-medium mb-1.5">Freshness</label>
-              <select
-                value={freshness}
-                onChange={(e) => setFreshness(e.target.value)}
-                className="w-full py-2 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-emerald-500 outline-none cursor-pointer"
-              >
-                <option value="any">Any Time</option>
-                <option value="today">Today (Last 24h)</option>
-                <option value="3days">Last 3 Days</option>
-                <option value="7days">Last 7 Days</option>
-                <option value="30days">Last 30 Days</option>
-              </select>
-            </div>
-
-            {/* Sort */}
-            <div>
-              <label className="block text-slate-400 font-medium mb-1.5">Sort Results By</label>
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-                className="w-full py-2 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-emerald-500 outline-none cursor-pointer"
-              >
-                <option value="relevance">Relevance</option>
-                <option value="newest">Newest First</option>
-                <option value="compensation">Compensation (High to Low)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-6 pt-2 border-t border-slate-800/80">
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
-              <input
-                type="checkbox"
-                checked={paidOnly}
-                onChange={(e) => setPaidOnly(e.target.checked)}
-                className="rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-emerald-500"
-              />
-              <span>Paid Opportunities Only</span>
-            </label>
-
-            <button
-              type="button"
-              onClick={() => setShowFiltersModal(false)}
-              className="ml-auto px-4 py-1.5 rounded-xl bg-emerald-400 text-slate-950 font-bold text-xs hover:bg-emerald-300 transition-colors cursor-pointer"
-            >
-              Apply Filters
-            </button>
-          </div>
+          )}
         </div>
-      )}
+      </form>
 
       {/* ──────────────────────────────────────────────────────────── */}
-      {/* 7. NATURAL LANGUAGE INTERPRETATION & HINTS                  */}
+      {/* 3. POPULAR SEARCH SUGGESTION CHIPS                          */}
       {/* ──────────────────────────────────────────────────────────── */}
-      {parsedFilters && (
-        (parsedFilters.role?.length > 0) ||
-        (parsedFilters.skills?.length > 0) ||
-        parsedFilters.location ||
-        parsedFilters.experience ||
-        parsedFilters.isRemote ||
-        parsedFilters.remote ||
-        parsedFilters.workType
-      ) && (
-        <div className="px-4 py-2.5 rounded-xl bg-slate-900/80 border border-emerald-900/40 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
-              Structured Criteria:
+      <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+        <span className="text-[11px] font-semibold text-slate-400 mr-1">Popular:</span>
+        {POPULAR_QUERIES.map((queryText) => {
+          const isSelected = activeWhat.toLowerCase() === queryText.toLowerCase();
+          return (
+            <button
+              key={queryText}
+              type="button"
+              onClick={() => handleSuggestionClick(queryText)}
+              className={`px-3 py-1 rounded-lg border text-[11px] font-medium transition-all cursor-pointer ${
+                isSelected
+                  ? isDark
+                    ? 'bg-emerald-950 border-emerald-700 text-emerald-300 font-bold'
+                    : 'bg-emerald-50 border-emerald-300 text-emerald-800 font-bold'
+                  : isDark
+                    ? 'bg-slate-900/90 hover:bg-slate-850 border-slate-800 text-slate-300 hover:text-emerald-300'
+                    : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 hover:text-emerald-700 shadow-xs'
+              }`}
+            >
+              {queryText}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* 4. SEARCH RESULTS FEED CONTAINER                            */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      <div className="space-y-4">
+        {/* Results Counter & Header */}
+        <div className={`flex flex-wrap items-center justify-between gap-2 text-xs px-1 ${
+          isDark ? 'text-slate-400' : 'text-slate-600'
+        }`}>
+          <div className="flex items-center flex-wrap gap-2">
+            <span>
+              Showing <strong className={isDark ? 'text-white' : 'text-slate-900'}>{jobs.length}</strong> of{' '}
+              <strong className={isDark ? 'text-white' : 'text-slate-900'}>{totalCount}</strong> verified opportunities
+              {isRemoteMode ? ' (100% Remote / Online)' : activeWhere ? ` near "${activeWhere}"` : ''}
             </span>
-            {parsedFilters.role?.map(r => (
-              <span key={r} className="px-2 py-0.5 rounded-md bg-emerald-950/90 text-emerald-300 font-semibold border border-emerald-800/50">
-                Role: {r}
-              </span>
-            ))}
-            {parsedFilters.skills?.map(s => (
-              <span key={s} className="px-2 py-0.5 rounded-md bg-teal-950/90 text-teal-300 font-semibold border border-teal-800/50">
-                Skill: {s}
-              </span>
-            ))}
-            {parsedFilters.experience && (
-              <span className="px-2 py-0.5 rounded-md bg-blue-950/90 text-blue-300 font-semibold border border-blue-800/50">
-                Experience: {parsedFilters.experience === 'entry-level' ? 'Fresher / Entry Level' : (typeof parsedFilters.experience === 'object' ? `${parsedFilters.experience.min}-${parsedFilters.experience.max} yrs` : parsedFilters.experience)}
+
+            {isRemoteMode && (
+              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                isDark ? 'bg-teal-950/80 border-teal-800 text-teal-300' : 'bg-teal-50 border-teal-300 text-teal-800'
+              }`}>
+                <Globe className="w-3 h-3" />
+                Remote Work Verified
               </span>
             )}
-            {parsedFilters.location && (
-              <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-200 border border-slate-700">
-                Location: {Array.isArray(parsedFilters.location) ? parsedFilters.location.join(', ') : parsedFilters.location}
-              </span>
-            )}
-            {(parsedFilters.remote || parsedFilters.isRemote) && (
-              <span className="px-2 py-0.5 rounded-md bg-teal-900/50 text-teal-300 border border-teal-700/60 font-medium">
-                Remote
-              </span>
-            )}
-            {parsedFilters.workType && (
-              <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-200 border border-slate-700">
-                Type: {parsedFilters.workType}
+
+            {(aiIntent?.isNearby || activeWhat.toLowerCase().includes('near')) && (
+              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                isDark ? 'bg-emerald-950/80 border-emerald-800 text-emerald-300' : 'bg-emerald-50 border-emerald-300 text-emerald-800'
+              }`}>
+                <Navigation className="w-3 h-3" />
+                Nearby Feed
               </span>
             )}
           </div>
 
-          <span className="text-[11px] text-slate-400">
-            {totalCount} {totalCount === 1 ? 'verified match' : 'verified matches'} found
+          <span className="text-[11px]">
+            Page {page} of {totalPages}
           </span>
         </div>
-      )}
 
-      {/* Did You Mean suggestion */}
-      {didYouMean && (
-        <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-800/50 text-xs text-amber-200 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>{didYouMean}</span>
-        </div>
-      )}
-
-      {/* ──────────────────────────────────────────────────────────── */}
-      {/* 8. LOADING & RESULTS CONTAINER (ZERO LAYOUT SHIFT / NO SHAKE) */}
-      {/* ──────────────────────────────────────────────────────────── */}
-      {loading && opportunities.length === 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[1, 2, 3, 4, 5, 6].map((n) => (
-            <div
-              key={n}
-              className="p-5 rounded-2xl bg-[#0b1320] border border-slate-800 space-y-4 animate-pulse"
-            >
-              <div className="flex items-center justify-between">
-                <div className="h-5 w-24 bg-slate-800 rounded-lg" />
-                <div className="h-4 w-20 bg-slate-800 rounded-full" />
+        {/* Loading Skeleton */}
+        {loading && jobs.length === 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <div
+                key={n}
+                className={`p-5 rounded-2xl border space-y-4 animate-pulse ${
+                  isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className={`h-5 w-24 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                  <div className={`h-4 w-20 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                </div>
+                <div className="space-y-2">
+                  <div className={`h-5 w-4/5 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                  <div className={`h-4 w-1/2 rounded ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <div className={`h-4 rounded ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                  <div className={`h-4 rounded ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                </div>
+                <div className={`h-10 rounded-xl mt-4 ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
               </div>
-              <div className="space-y-2">
-                <div className="h-5 w-4/5 bg-slate-800 rounded-lg" />
-                <div className="h-4 w-1/2 bg-slate-800 rounded" />
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-2">
-                <div className="h-4 bg-slate-800 rounded" />
-                <div className="h-4 bg-slate-800 rounded" />
-              </div>
-              <div className="h-10 bg-slate-800 rounded-xl mt-4" />
-            </div>
-          ))}
-        </div>
-      ) : error && opportunities.length === 0 ? (
-        /* ──────────────────────────────────────────────────────────── */
-        /* 9. HONEST ERROR STATE                                       */
-        /* ──────────────────────────────────────────────────────────── */
-        <div className="p-10 rounded-2xl bg-rose-950/20 border border-rose-900/40 text-center space-y-4 max-w-lg mx-auto">
-          <AlertCircle className="w-10 h-10 text-rose-400 mx-auto" />
-          <h3 className="text-lg font-bold text-white">Unable to load opportunities right now.</h3>
-          <p className="text-xs text-slate-400">
-            {error}
-          </p>
-          <div className="flex items-center justify-center gap-3 pt-2">
+            ))}
+          </div>
+        ) : error && jobs.length === 0 ? (
+          /* Error State */
+          <div className={`p-8 rounded-2xl border text-center space-y-3 max-w-md mx-auto ${
+            isDark ? 'bg-rose-950/20 border-rose-900/40' : 'bg-rose-50 border-rose-200'
+          }`}>
+            <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
+            <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{error}</h3>
+            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              Please check your connection or retry your query.
+            </p>
             <button
               type="button"
-              onClick={() => performSearch(false, 1)}
+              onClick={() => performSearch({ targetWhat: activeWhat, targetWhere: activeWhere, targetWorkMode: workMode, isLoadMore: false, targetPage: 1 })}
               className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs transition-colors cursor-pointer"
             >
               Retry Search
             </button>
-            <button
-              type="button"
-              onClick={handleClearFilters}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 font-medium text-xs transition-colors cursor-pointer"
-            >
-              Clear Filters
-            </button>
           </div>
-        </div>
-      ) : !loading && opportunities.length === 0 ? (
-        /* ──────────────────────────────────────────────────────────── */
-        /* 10. HONEST EMPTY STATE                                      */
-        /* ──────────────────────────────────────────────────────────── */
-        <div className="p-8 sm:p-10 rounded-2xl bg-slate-900/60 border border-slate-800 text-center space-y-5 max-w-lg mx-auto my-8">
-          <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
-            <Search className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-white">
-              No exact matches found.
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              {activeQuery
-                ? `No live job listings matched all specific criteria for "${activeQuery}". We never fabricate jobs to fill results.`
-                : 'No live job listings matched your selected filters.'}
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 text-left text-xs text-slate-300 space-y-2">
-            <span className="font-semibold text-slate-200">Try:</span>
-            <ul className="list-disc list-inside space-y-1.5 text-slate-400">
-              <li>Remote jobs</li>
-              <li>Nearby locations</li>
-              <li>Related job titles</li>
-              <li>Broader experience range</li>
-            </ul>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedLocation('remote');
-                setPage(1);
-              }}
-              className="px-3.5 py-2 rounded-xl bg-teal-950/80 border border-teal-800/60 text-teal-300 hover:bg-teal-900/80 font-semibold text-xs transition-colors cursor-pointer"
-            >
-              Try Remote Jobs
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedLocation('all');
-                setOpportunityType('all');
-                setCategory('all');
-                setPaidOnly(false);
-                setFreshness('any');
-                setPage(1);
-              }}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors cursor-pointer"
-            >
-              Broader Range
-            </button>
-            <button
-              type="button"
-              onClick={handleClearFilters}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs transition-colors cursor-pointer"
-            >
-              Clear Filters
-            </button>
-            <button
-              type="button"
-              onClick={handleRefreshFeed}
-              className="px-3.5 py-2 rounded-xl bg-emerald-950/80 border border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/80 font-semibold text-xs transition-colors cursor-pointer"
-            >
-              Refresh Feeds
-            </button>
-          </div>
-        </div>
-      ) : (
-        /* ──────────────────────────────────────────────────────────── */
-        /* 11. REAL SEARCH RESULT CARDS (Step 8 & 9 requirements)       */
-        /* ──────────────────────────────────────────────────────────── */
-        <div className={`space-y-6 transition-opacity duration-200 ${loading ? 'opacity-70 pointer-events-none' : 'opacity-100'}`}>
-          {loading && (
-            <div className="h-1 w-full bg-slate-800 overflow-hidden rounded-full">
-              <div className="h-full bg-[#39E98A] w-1/3 animate-[pulse_1s_ease-in-out_infinite]" />
+        ) : !loading && jobs.length === 0 ? (
+          /* Honest Empty State */
+          <div className={`p-8 sm:p-12 rounded-2xl border text-center space-y-4 max-w-lg mx-auto my-6 ${
+            isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          }`}>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto ${
+              isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
+            }`}>
+              <Search className="w-6 h-6" />
             </div>
-          )}
-          <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-            <span>
-              Showing <strong className="text-white">{opportunities.length}</strong> of <strong className="text-white">{totalCount}</strong> live opportunities
-            </span>
-            <span className="text-[11px] text-slate-500">Sorted by: {sort}</span>
-          </div>
+            <div>
+              <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                No matching verified jobs found.
+              </h3>
+              <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                {activeWhat || activeWhere
+                  ? `No verified openings matched "${[activeWhat, activeWhere].filter(Boolean).join(' in ')}". We never display fake jobs to pad results.`
+                  : 'No jobs match your selected filter criteria.'}
+              </p>
+            </div>
 
+            <div className={`p-3.5 rounded-xl border text-left text-xs space-y-1.5 ${
+              isDark ? 'bg-slate-950/80 border-slate-800/80 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+            }`}>
+              <span className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>Recommendations:</span>
+              <ul className={`list-disc list-inside space-y-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                <li>Try searching with 100% remote work enabled</li>
+                <li>Search broader terms like "delivery", "associate", or "developer"</li>
+                <li>Clear experience or salary filters</li>
+              </ul>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleSetRemoteMode}
+                className={`px-3.5 py-2 rounded-xl border font-semibold text-xs transition-colors cursor-pointer ${
+                  isDark
+                    ? 'bg-teal-950/80 border-teal-800/60 text-teal-300 hover:bg-teal-900/80'
+                    : 'bg-teal-50 border-teal-300 text-teal-800 hover:bg-teal-100'
+                }`}
+              >
+                🌐 Try 100% Remote Jobs
+              </button>
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className={`px-3.5 py-2 rounded-xl font-medium text-xs transition-colors cursor-pointer ${
+                  isDark
+                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                Clear All Filters
+              </button>
+              <button
+                type="button"
+                onClick={handleRefreshFeed}
+                disabled={refreshLoading}
+                className={`px-3.5 py-2 rounded-xl border font-semibold text-xs transition-colors cursor-pointer ${
+                  isDark
+                    ? 'bg-emerald-950/80 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/80'
+                    : 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100'
+                }`}
+              >
+                Refresh Real Feeds
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Real Job Cards Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {opportunities.map((opp) => {
-              const isSaved = savedIds.includes(opp.id);
-              const compLabel = (opp.salary && opp.salary !== 'Salary not disclosed')
-                ? opp.salary
-                : (opp.compensation?.label && opp.compensation.label !== 'Flexible' && opp.compensation.label !== 'Pay not provided'
-                  ? opp.compensation.label
-                  : 'Salary not disclosed');
-              const locationLabel = opp.location || (opp.remote ? 'Remote' : 'Location not specified');
-              const providerLabel = opp.company || opp.provider || 'Company not disclosed';
-              const jobUrl = opp.url || opp.sourceUrl;
-              const postedTime = formatRelativeTime(opp.postedAt);
-              const checkedTime = formatRelativeTime(opp.lastCheckedAt || opp.fetchedAt);
-              const locationType = opp.locationType || (opp.remote ? 'Remote' : 'Exact City');
-              const expLabel = opp.experienceLevel || 'Not specified';
-              const isClosed = opp.status === 'closed' || opp.isClosed;
+            {jobs.map((job) => {
+              const isSaved = savedIds.includes(job.id);
+              const applyLink = job.applyUrl || job.applicationUrl || job.jobUrl || job.sourceUrl;
+              const locationLabel = job.location || (job.remote ? 'Remote' : 'Location on application');
+              const companyName = job.company || job.provider || 'Verified Employer';
+              const salaryLabel = job.salary || (job.compensation?.label) || 'Disclosed during application';
+              const postedTime = formatRelativeTime(job.postedAt || job.postedDate);
 
               return (
                 <div
-                  key={opp.id}
-                  className={`group relative flex flex-col justify-between p-5 rounded-2xl bg-[#0b1320] border ${isClosed ? 'border-rose-900/40 opacity-75' : 'border-slate-800 hover:border-slate-700'} shadow-xl hover:shadow-2xl transition-all duration-200`}
+                  key={job.id}
+                  className={`group relative flex flex-col justify-between p-5 rounded-2xl border transition-all duration-200 ${
+                    isDark
+                      ? 'bg-[#0b1320] border-slate-800 hover:border-slate-700 shadow-xl hover:shadow-2xl'
+                      : 'bg-white border-slate-200 hover:border-emerald-300 shadow-md hover:shadow-xl'
+                  }`}
                 >
-                  {/* Card Top: Badges & Source */}
                   <div className="space-y-3">
+                    {/* Top Meta Row */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-emerald-950/80 border border-emerald-800/60 text-emerald-300">
-                          {opp.category || 'Job Listing'}
-                        </span>
-                        {/* Location Type Badge */}
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
-                          locationType === 'Remote'
-                            ? 'bg-teal-950/80 border-teal-700/60 text-teal-300'
-                            : locationType === 'Hybrid'
-                            ? 'bg-blue-950/80 border-blue-700/60 text-blue-300'
-                            : 'bg-slate-900 border-slate-850 text-slate-300'
+                        {/* Sector / Category badge */}
+                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-lg border ${
+                          isDark
+                            ? 'bg-emerald-950/80 border-emerald-800/60 text-emerald-300'
+                            : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                         }`}>
-                          📍 {locationType}
+                          {job.sector || job.category || 'Opportunity'}
                         </span>
-                        {/* Experience Level Badge */}
-                        {expLabel && expLabel !== 'Not specified' && (
-                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
-                            expLabel.includes('Fresher') || expLabel.includes('Entry')
-                              ? 'bg-emerald-950/70 border-emerald-800/50 text-emerald-300'
-                              : 'bg-indigo-950/70 border-indigo-800/50 text-indigo-300'
-                          }`}>
-                            💼 {expLabel}
-                          </span>
-                        )}
-                        {isClosed && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-950/90 border border-rose-700/60 text-rose-300">
-                            Closed / Expired
-                          </span>
-                        )}
-                      </div>
 
-                      {/* Source attribution & Link Verification */}
-                      <div className="flex flex-col items-end gap-1 text-right">
+                        {/* Remote / On-Site badge */}
                         <span
-                          className="text-[10px] font-medium text-slate-300 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800 truncate max-w-[140px]"
-                          title={`Source: ${opp.source || 'Job Platform'}`}
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                            job.remote || job.isRemote
+                              ? isDark
+                                ? 'bg-teal-950/80 border-teal-700/60 text-teal-300'
+                                : 'bg-teal-50 border-teal-200 text-teal-800'
+                              : isDark
+                                ? 'bg-slate-900 border-slate-800 text-slate-300'
+                                : 'bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
                         >
-                          Source: {opp.source || 'Platform'}
+                          {job.remote || job.isRemote ? '🌐 Remote' : '📍 On-Site'}
                         </span>
-                        {opp.linkStatus === 'verified' ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                            <span>Link verified</span>
-                          </span>
-                        ) : opp.linkStatus === 'broken' ? (
-                          <span className="text-[10px] font-semibold text-rose-400">
-                            Link broken
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-500" title="Valid link format, reachability unverified">
-                            Link unverified
+
+                        {/* Distance Badge if available */}
+                        {typeof job.distanceKm === 'number' && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                            isDark
+                              ? 'bg-blue-950/90 border-blue-800/60 text-blue-300'
+                              : 'bg-blue-50 border-blue-200 text-blue-800'
+                          }`}>
+                            {job.distanceKm === 0 ? 'Exact Location' : `${job.distanceKm} km away`}
                           </span>
                         )}
                       </div>
+
+                      {/* Verified Badge */}
+                      <div className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                        isDark
+                          ? 'text-emerald-400 bg-emerald-950/60 border-emerald-800/40'
+                          : 'text-emerald-800 bg-emerald-50 border-emerald-200'
+                      }`}>
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span>Verified</span>
+                      </div>
                     </div>
 
-                    {/* Title & Company */}
+                    {/* Job Title & Company */}
                     <div>
-                      <h3 className="text-base font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-2">
-                        {opp.title}
+                      <h3
+                        onClick={() => onSelectOpportunity && onSelectOpportunity(job)}
+                        className={`text-base font-bold transition-colors line-clamp-2 cursor-pointer ${
+                          isDark ? 'text-white group-hover:text-emerald-300' : 'text-slate-900 group-hover:text-emerald-600'
+                        }`}
+                        title={job.title}
+                      >
+                        {job.title}
                       </h3>
-                      <p className="text-xs text-slate-300 font-semibold mt-1 flex items-center gap-1">
-                        <span>{providerLabel}</span>
-                      </p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className={`text-xs font-semibold truncate ${
+                          isDark ? 'text-slate-300' : 'text-slate-700'
+                        }`}>
+                          {companyName}
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Key Metadata Grid */}
+                    {/* Job Meta: Location, Schedule, Pay */}
                     <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
-                      <div className="flex items-center gap-1.5 text-slate-300 truncate" title={locationLabel}>
-                        <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <div className={`flex items-center gap-1.5 truncate ${
+                        isDark ? 'text-slate-300' : 'text-slate-600'
+                      }`} title={locationLabel}>
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span className="truncate">{locationLabel}</span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-slate-300 truncate" title={opp.type || 'Full-time'}>
-                        <Briefcase className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                        <span className="truncate">{opp.type || 'Full-time'}</span>
+                      <div className={`flex items-center gap-1.5 truncate ${
+                        isDark ? 'text-slate-300' : 'text-slate-600'
+                      }`} title={job.employmentType || job.type || 'Full-time'}>
+                        <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate">{job.employmentType || job.type || 'Full-time'}</span>
                       </div>
 
-                      <div className="col-span-2 flex items-center gap-1.5 text-emerald-300 font-semibold truncate pt-0.5" title={compLabel}>
-                        <Coins className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="truncate">{compLabel}</span>
+                      <div className={`col-span-2 flex items-center gap-1.5 font-semibold truncate pt-0.5 ${
+                        isDark ? 'text-emerald-300' : 'text-emerald-700'
+                      }`} title={salaryLabel}>
+                        <Coins className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        <span className="truncate">{salaryLabel}</span>
                       </div>
                     </div>
 
-                    {/* Freshness Row */}
-                    {(postedTime || checkedTime) && (
-                      <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-400 border-t border-slate-850/60">
-                        {postedTime && (
+                    {/* AI Match Explanation */}
+                    {Array.isArray(job.matchReasons) && job.matchReasons.length > 0 && (
+                      <div className={`p-2.5 rounded-xl border space-y-1 ${
+                        isDark ? 'bg-slate-950/90 border-emerald-900/40' : 'bg-emerald-50/70 border-emerald-200'
+                      }`}>
+                        <div className={`text-[10px] font-bold uppercase tracking-wider flex items-center justify-between ${
+                          isDark ? 'text-emerald-400' : 'text-emerald-800'
+                        }`}>
                           <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-slate-500" />
-                            <span>Posted {postedTime}</span>
+                            <Sparkles className="w-3 h-3 text-emerald-500" />
+                            AI Match Factors
                           </span>
-                        )}
-                        {checkedTime && (
-                          <span className="text-slate-500">
-                            • Checked {checkedTime}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Explainable Recommendation Match Breakdown */}
-                    {opp.matchExplanation && opp.matchExplanation.length > 0 && (
-                      <div className="p-2.5 rounded-xl bg-slate-950/80 border border-emerald-900/30 space-y-1.5">
-                        <div className="text-[11px] font-semibold text-emerald-400 flex items-center justify-between">
-                          <span>Strong match because:</span>
-                          {opp.relevanceScore && (
-                            <span className="text-[10px] text-slate-400 font-mono">Score: {opp.relevanceScore}</span>
+                          {job.matchScore && (
+                            <span className={`font-mono text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{job.matchScore}% Match</span>
                           )}
                         </div>
                         <div className="flex flex-wrap gap-1">
-                          {opp.matchExplanation.map((reason, idx) => (
+                          {job.matchReasons.slice(0, 3).map((reason, idx) => (
                             <span
                               key={idx}
-                              className="inline-flex items-center text-[10px] font-medium text-emerald-300 bg-emerald-950/70 border border-emerald-800/40 px-2 py-0.5 rounded-md"
+                              className={`text-[10px] px-2 py-0.5 rounded-md border ${
+                                isDark
+                                  ? 'text-emerald-300 bg-emerald-950/70 border-emerald-800/40'
+                                  : 'text-emerald-900 bg-white border-emerald-200 font-medium'
+                              }`}
                             >
                               {reason}
                             </span>
@@ -990,60 +1191,69 @@ export default function SearchOpportunitiesPage({
                       </div>
                     )}
 
-                    {/* Requirements / Skills Tags */}
-                    {opp.requirements && opp.requirements.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {opp.requirements.slice(0, 3).map((req, i) => (
-                          <span
-                            key={i}
-                            className="text-[10px] text-slate-400 bg-slate-900/90 px-2 py-0.5 rounded-md border border-slate-800 truncate max-w-[140px]"
-                          >
-                            {req}
-                          </span>
-                        ))}
-                        {opp.requirements.length > 3 && (
-                          <span className="text-[10px] text-slate-500 self-center">
-                            +{opp.requirements.length - 3}
+                    {/* Freshness Row */}
+                    {postedTime && (
+                      <div className={`flex items-center gap-1 text-[11px] pt-1 border-t ${
+                        isDark ? 'text-slate-400 border-slate-800/60' : 'text-slate-500 border-slate-100'
+                      }`}>
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        <span>Posted {postedTime}</span>
+                        {job.source && (
+                          <span className="text-slate-400 ml-auto truncate max-w-[140px]">
+                            Via {job.source}
                           </span>
                         )}
                       </div>
                     )}
-
-                    {/* Description snippet */}
-                    {opp.description && (
-                      <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed pt-1">
-                        {opp.description}
-                      </p>
-                    )}
                   </div>
 
-                  {/* Card Footer: Actions */}
-                  <div className="pt-4 mt-3 border-t border-slate-800/80 flex items-center gap-2.5">
-                    {/* View Job (Opens actual source URL directly) */}
+                  {/* Card Action Buttons */}
+                  <div className={`pt-4 mt-3 border-t flex items-center gap-2 ${
+                    isDark ? 'border-slate-800/80' : 'border-slate-100'
+                  }`}>
+                    {/* Primary Apply Button */}
                     <a
-                      href={jobUrl}
+                      href={applyLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                      className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                     >
-                      <span>View Job</span>
+                      <span>Apply on Portal</span>
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
 
-                    {/* Save Button */}
+                    {/* Details Button */}
+                    <button
+                      type="button"
+                      onClick={() => onSelectOpportunity && onSelectOpportunity(job)}
+                      className={`py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                        isDark
+                          ? 'bg-slate-900 hover:bg-slate-850 text-slate-200 border-slate-800'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                      }`}
+                      title="View full job details"
+                    >
+                      Details
+                    </button>
+
+                    {/* Save Bookmark Button */}
                     <button
                       type="button"
                       onClick={() => {
                         if (!isAuthenticated) {
                           openAuthModal('login');
                         } else {
-                          toggleSaveOpportunity(opp.id);
+                          toggleSaveOpportunity(job.id);
                         }
                       }}
                       className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
                         isSaved
-                          ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
-                          : 'bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white border-slate-800'
+                          ? isDark
+                            ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
+                            : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                          : isDark
+                            ? 'bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white border-slate-800'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 border-slate-200'
                       }`}
                       title={isSaved ? 'Remove from Saved' : 'Save Opportunity'}
                     >
@@ -1054,23 +1264,36 @@ export default function SearchOpportunitiesPage({
               );
             })}
           </div>
+        )}
 
-          {/* Load More Pagination */}
-          {hasMore && (
-            <div className="text-center pt-6">
-              <button
-                type="button"
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-                className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-200 transition-all cursor-pointer disabled:opacity-50"
-              >
-                {loadingMore ? 'Loading more…' : 'Load More Opportunities'}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
+        {/* Load More Pagination */}
+        {!loading && page < totalPages && (
+          <div className="text-center pt-6">
+            <button
+              type="button"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              className={`px-6 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer disabled:opacity-50 inline-flex items-center gap-2 ${
+                isDark
+                  ? 'bg-slate-900 hover:bg-slate-850 border-slate-700 text-slate-200 hover:text-white'
+                  : 'bg-white hover:bg-slate-100 border-slate-300 text-slate-800 shadow-xs'
+              }`}
+            >
+              {loadingMore ? (
+                <>
+                  <RotateCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                  <span>Loading more verified jobs…</span>
+                </>
+              ) : (
+                <>
+                  <span>Load More Jobs</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

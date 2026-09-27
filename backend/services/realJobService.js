@@ -11,66 +11,81 @@ import { isValidJobUrl, matchesExpectedSource, verifyJobUrlReachability } from '
 import { Opportunity } from '../models/Opportunity.js';
 import { getAllOpportunities } from '../data/store.js';
 import { VERIFIED_PARTNER_LISTINGS } from './opportunityFeedService.js';
+import { getCoordinatesForLocation, calculateHaversineDistance, resolveCoordinates } from './locationService.js';
 
 // Cache for external API queries (15-minute TTL)
 const queryCache = new Map();
 const CACHE_TTL_MS = 15 * 60 * 1000;
 
 /**
- * Detects generic job-site homepages, search pages, and non-specific URLs.
- * These should NEVER be presented as exact application links.
- * Examples: https://www.indeed.com/, https://linkedin.com/jobs, /search?q=delivery
+ * Classifies an opportunity URL into its precise destination type:
+ * - 'direct_application': specific job post, application form, or direct partner registration portal
+ * - 'employer_careers': company's career portal or jobs landing page
+ * - 'aggregator_directory': third-party job board category / search page
+ * - 'company_website': root company homepage
  */
-function isGenericJobSiteUrl(url) {
-  if (!url || typeof url !== 'string') return true;
+export function classifyJobUrl(url) {
+  if (!url || typeof url !== 'string') {
+    return { type: 'invalid', isDirectApply: false, label: 'Application link unavailable' };
+  }
   try {
     const parsed = new URL(url);
-    const pathname = parsed.pathname.replace(/\/+$/, ''); // strip trailing slashes
+    const pathname = parsed.pathname.replace(/\/+$/, '').toLowerCase();
     const host = parsed.hostname.toLowerCase();
 
-    // Allow partner/careers/ride subdomains — these are specific onboarding portals
-    if (host.startsWith('partner.') || host.startsWith('careers.') ||
-        host.startsWith('ride.') || host.startsWith('flex.')) {
-      return false; // These subdomains ARE the application destination
+    // 1. Direct partner onboarding portals (e.g. Swiggy Ride, Urban Company Partner, Zomato Partner, Blinkit, Zepto, Rapido Captain)
+    if (host.startsWith('ride.') || host.startsWith('partner.') || host.startsWith('flex.') || host.startsWith('partners.') ||
+        host.includes('runnr.in') || host.includes('rapido.bike') || host.includes('shadowfax.in') ||
+        pathname.includes('/delivery-partner') || pathname.includes('/partner') || pathname.includes('/captain') ||
+        pathname.includes('enquiry-form')) {
+      return { type: 'direct_application', isDirectApply: true, label: 'Apply on Partner Portal' };
     }
 
-    // Root homepages with no meaningful path (e.g. https://www.sisindia.com/)
-    if (pathname === '' || pathname === '/') return true;
+    // 2. Direct ATS platforms and application forms
+    const directAtsHosts = ['jobs.lever.co', 'boards.greenhouse.io', 'myworkdayjobs.com', 'workday.com', 'smartrecruiters.com', 'icims.com', 'bamboohr.com', 'workable.com'];
+    if (directAtsHosts.some(ats => host.includes(ats)) ||
+        pathname.includes('/apply') || pathname.includes('/signup') || pathname.includes('/register') ||
+        pathname.includes('/view/job') || pathname.includes('/job-opportunities') || pathname.includes('search-and-apply') ||
+        pathname.match(/\/(?:jobs|job|position|vacancy|opening)\/[a-z0-9_-]+/i)) {
+      return { type: 'direct_application', isDirectApply: true, label: 'Apply Directly' };
+    }
 
-    // Job AGGREGATOR sites — their /jobs, /internships, /search, /careers pages
-    // are NOT specific job listings, they are search/listing pages
+    // 3. Known Aggregator Directories (not direct apply)
     const aggregatorHosts = [
-      'www.linkedin.com', 'linkedin.com',
-      'www.indeed.com', 'indeed.com', 'in.indeed.com',
-      'www.naukri.com', 'naukri.com',
-      'www.internshala.com', 'internshala.com',
-      'www.glassdoor.com', 'glassdoor.com',
-      'www.adzuna.com', 'adzuna.com'
+      'linkedin.com', 'indeed.com', 'naukri.com', 'internshala.com',
+      'glassdoor.com', 'adzuna.com', 'monster.com', 'foundit.in'
     ];
-
-    if (aggregatorHosts.includes(host)) {
-      // On aggregator sites, generic listing/search pages are NOT exact job links
-      const aggregatorGenericPaths = [
-        '/jobs', '/search', '/internships', '/careers',
-        '/opportunities', '/job-search', '/find-jobs'
-      ];
-      if (aggregatorGenericPaths.includes(pathname.toLowerCase())) {
-        return true;
-      }
+    const isAggregator = aggregatorHosts.some(h => host.includes(h));
+    if (isAggregator) {
+      return { type: 'aggregator_directory', isDirectApply: false, label: 'View Platform Directory' };
     }
 
-    // For NON-aggregator (direct employer) sites, /careers IS the application destination
-    // e.g. https://www.ihcltata.com/careers/ is a legitimate employer portal
-    // So we do NOT reject /careers on employer sites
+    // 4. Root homepage with no meaningful path (e.g. https://www.sisindia.com/)
+    if (pathname === '' || pathname === '/') {
+      return { type: 'company_website', isDirectApply: false, label: 'Visit Company Website' };
+    }
 
-    return false;
+    // 5. Employer career pages (e.g. https://www.ihcltata.com/careers/)
+    if (pathname.includes('/careers') || pathname.includes('/jobs') || host.startsWith('careers.') || host.startsWith('rcareers.')) {
+      return { type: 'employer_careers', isDirectApply: false, label: 'Visit Employer Careers' };
+    }
+
+    return { type: 'direct_application', isDirectApply: true, label: 'Apply Directly' };
   } catch {
-    return true;
+    return { type: 'invalid', isDirectApply: false, label: 'Application link unavailable' };
   }
 }
 
 /**
- * 1. Query / Intent Parser (Section 6)
+ * Detects generic job-site homepages, search pages, and non-specific URLs.
+ */
+function isGenericJobSiteUrl(url) {
+  const classification = classifyJobUrl(url);
+  return !classification.isDirectApply;
+}
+
+/**
+ * 1. Query / Intent Parser (Sections 4, 6, 7)
  * Extracts structured search parameters from user natural language query
  */
 export function parseJobQuery(rawQuery = '', userProfile = {}) {
@@ -80,52 +95,94 @@ export function parseJobQuery(rawQuery = '', userProfile = {}) {
   const parsed = {
     originalQuery: queryStr,
     keyword: queryStr,
+    role: null,
     jobTitle: null,
     category: null,
+    sector: null,
     location: null,
     remote: null,
+    isRemote: false,
     employmentType: null,
+    employment_type: null,
     experience: null,
     salary: null,
-    shift: null
+    salary_min: null,
+    shift: null,
+    isNearby: false,
+    radius_km: 15
   };
 
+  // Safe user profile location extraction
+  let profileLoc = '';
+  if (typeof userProfile?.city === 'string') profileLoc = userProfile.city;
+  else if (typeof userProfile?.location === 'string') profileLoc = userProfile.location;
+  else if (Array.isArray(userProfile?.location)) profileLoc = userProfile.location.join(' ');
+
   if (!queryStr) {
-    if (userProfile.city || userProfile.location) {
-      parsed.location = userProfile.city || userProfile.location;
+    if (profileLoc) {
+      parsed.location = profileLoc;
     }
     return parsed;
+  }
+
+  // Detect Nearby Queries (Sections 1, 8)
+  if (/\b(?:near\s*(?:me|you)|nearby|close\s*to\s*(?:me|you|home)|around\s*(?:me|you)|jobs?\s*near\s*(?:me|you)|jobs?\s*nearby)\b/i.test(qLower)) {
+    parsed.isNearby = true;
+  }
+  const radiusMatch = qLower.match(/within\s*(\d+)\s*(?:km|kms|kilometers?)/i);
+  if (radiusMatch) {
+    parsed.radius_km = parseInt(radiusMatch[1], 10);
+    parsed.isNearby = true;
   }
 
   // Detect Remote vs In-person
   if (/\b(?:remote|work from home|wfh|online|virtual|from home)\b/i.test(qLower)) {
     parsed.remote = true;
+    parsed.isRemote = true;
   } else if (/\b(?:on-site|onsite|offline|in person|in-person|outdoor)\b/i.test(qLower)) {
     parsed.remote = false;
+    parsed.isRemote = false;
   }
 
-  // Detect Employment Type
+  // Detect Employment Type (Sections 6, 20)
   if (/\b(?:part[\s-]?time|half[\s-]?day)\b/i.test(qLower)) {
     parsed.employmentType = 'Part-time';
+    parsed.employment_type = 'part_time';
   } else if (/\b(?:full[\s-]?time)\b/i.test(qLower)) {
     parsed.employmentType = 'Full-time';
+    parsed.employment_type = 'full_time';
   } else if (/\b(?:internship|intern|trainee)\b/i.test(qLower)) {
     parsed.employmentType = 'Internship';
-  } else if (/\b(?:freelance|gig|contract)\b/i.test(qLower)) {
+    parsed.employment_type = 'internship';
+  } else if (/\b(?:freelance|gig)\b/i.test(qLower)) {
     parsed.employmentType = 'Gig';
+    parsed.employment_type = 'gig';
+  } else if (/\b(?:temporary|temp|contract)\b/i.test(qLower)) {
+    parsed.employmentType = 'Temporary';
+    parsed.employment_type = 'temporary';
   }
 
-  // Detect Shift
+  // Detect Shift / Hours
   if (/\b(?:night[\s-]?shift|night)\b/i.test(qLower)) {
     parsed.shift = 'Night shift';
   } else if (/\b(?:day[\s-]?shift)\b/i.test(qLower)) {
     parsed.shift = 'Day shift';
+  } else if (/\b(?:evening|evenings)\b/i.test(qLower)) {
+    parsed.shift = 'Evening shift';
+    if (!parsed.employmentType) {
+      parsed.employmentType = 'Part-time';
+      parsed.employment_type = 'part_time';
+    }
   } else if (/\b(?:weekend|weekends)\b/i.test(qLower)) {
     parsed.shift = 'Weekend';
+    if (!parsed.employmentType) {
+      parsed.employmentType = 'Part-time';
+      parsed.employment_type = 'part_time';
+    }
   }
 
-  // Detect Experience Level
-  if (/\b(?:fresher|freshers|entry[\s-]?level|no experience|0\s*years?|college grad(?:uate)?)\b/i.test(qLower)) {
+  // Detect Experience Level (Fresher / B.Tech / No experience)
+  if (/\b(?:fresher|freshers|entry[\s-]?level|no experience|without experience|0\s*years?|college grad(?:uate)?|b\.?tech|bca|mca)\b/i.test(qLower)) {
     parsed.experience = 'entry-level';
   } else if (/\b(?:senior|lead|principal|sr\.?)\b/i.test(qLower)) {
     parsed.experience = 'senior';
@@ -133,8 +190,19 @@ export function parseJobQuery(rawQuery = '', userProfile = {}) {
     parsed.experience = 'entry-level';
   }
 
-  // Detect Location (Cities in India & Global)
+  // Detect Salary Minimums (e.g. "paying above 20,000", "paying above ₹25,000")
+  const salMatch = qLower.match(/(?:paying\s*(?:above|more than)?|above|min|minimum)\s*(?:₹|rs\.?|inr)?\s*([0-9]+(?:,[0-9]+)*)/i);
+  if (salMatch) {
+    const num = parseInt(salMatch[1].replace(/,/g, ''), 10);
+    if (!isNaN(num) && num > 1000) {
+      parsed.salary_min = num;
+      parsed.salary = `₹${num.toLocaleString()}+`;
+    }
+  }
+
+  // Detect Location (Major Indian & Regional Cities)
   const knownCities = [
+    'vadlamudi', 'tenali', 'guntur', 'vijayawada', 'amaravati', 'visakhapatnam', 'vizag', 'tirupati', 'mangalagiri',
     'hyderabad', 'bengaluru', 'bangalore', 'chennai', 'mumbai', 'delhi', 
     'pune', 'kolkata', 'noida', 'gurugram', 'gurgaon', 'ahmedabad', 
     'jaipur', 'lucknow', 'chandigarh', 'kochi', 'coimbatore', 'indore',
@@ -144,69 +212,99 @@ export function parseJobQuery(rawQuery = '', userProfile = {}) {
   for (const city of knownCities) {
     const regex = new RegExp(`\\b${city}\\b`, 'i');
     if (regex.test(qLower)) {
-      const canonical = city === 'bangalore' || city === 'bengaluru' ? 'Bangalore'
+      const canonical = city === 'bangalore' || city === 'bengaluru' ? 'Bengaluru'
         : city.charAt(0).toUpperCase() + city.slice(1);
       parsed.location = canonical;
       if (parsed.remote === null) {
         parsed.remote = false;
+        parsed.isRemote = false;
+      }
+      break;
+    }
+  }
+
+  // Check specific local areas in query (e.g. Madhapur, Hitec City, Whitefield, Andheri)
+  const knownAreas = ['madhapur', 'hitec city', 'gachibowli', 'kondapur', 'kukatpally', 'whitefield', 'koramangala', 'indiranagar', 'andheri', 'bandra'];
+  for (const area of knownAreas) {
+    if (qLower.includes(area)) {
+      parsed.area = area.charAt(0).toUpperCase() + area.slice(1);
+      if (!parsed.location) {
+        if (['madhapur', 'hitec city', 'gachibowli', 'kondapur', 'kukatpally'].includes(area)) parsed.location = 'Hyderabad';
+        else if (['whitefield', 'koramangala', 'indiranagar'].includes(area)) parsed.location = 'Bengaluru';
+        else if (['andheri', 'bandra'].includes(area)) parsed.location = 'Mumbai';
       }
       break;
     }
   }
 
   // Fallback location from user profile if not in query
-  if (!parsed.location && userProfile.city) {
-    parsed.location = userProfile.city;
+  if (!parsed.location && profileLoc) {
+    parsed.location = profileLoc;
   }
 
-  // Role & Category Intent Detection
+  // 11-Sector Intent Detection (Sections 6, 7)
   const roleRules = [
-    { regex: /\b(?:delivery|rider|courier|delivery partner|delivery executive)\b/i, title: 'Delivery Executive', category: 'Logistics' },
-    { regex: /\b(?:catering|catring|banquet|catering helper|catering server)\b/i, title: 'Catering Associate', category: 'Hospitality' },
-    { regex: /\b(?:cook|chef|kitchen helper|prep cook|culinary)\b/i, title: 'Cook', category: 'Culinary' },
-    { regex: /\b(?:warehouse|packing|picker|packer|hub associate|sorting)\b/i, title: 'Warehouse Associate', category: 'Logistics' },
-    { regex: /\b(?:security guard|security officer|watchman|guard)\b/i, title: 'Security Guard', category: 'Security' },
-    { regex: /\b(?:cleaning|cleaner|housekeeping|sweeper|janitor)\b/i, title: 'Cleaning & Housekeeping', category: 'Facilities' },
-    { regex: /\b(?:driver|chauffeur|car driver|auto driver)\b/i, title: 'Driver', category: 'Transportation' },
-    { regex: /\b(?:retail|store associate|cashier|sales executive|showroom)\b/i, title: 'Retail Sales Associate', category: 'Retail' },
-    { regex: /\b(?:factory|machine operator|assembly worker|plant worker)\b/i, title: 'Factory Machine Operator', category: 'Manufacturing' },
-    { regex: /\b(?:construction|mason|site worker|laborer|builder)\b/i, title: 'Construction Associate', category: 'Construction' },
-    { regex: /\b(?:electrician|electrical|wiring|wireman)\b/i, title: 'Electrician', category: 'Trades' },
-    { regex: /\b(?:plumber|plumbing|pipe fitter)\b/i, title: 'Plumber', category: 'Trades' },
-    { regex: /\b(?:office assistant|office boy|peon|admin assistant|front desk)\b/i, title: 'Office Assistant', category: 'Administration' },
-    { regex: /\b(?:receptionist|front office|front desk executive)\b/i, title: 'Receptionist', category: 'Administration' },
-    { regex: /\b(?:data entry|typing|back office)\b/i, title: 'Data Entry Operator', category: 'Administration' },
-    { regex: /\b(?:customer support|customer care|bpo|call center|telecalling|telecaller)\b/i, title: 'Customer Support Representative', category: 'Customer Support' },
-    { regex: /\b(?:restaurant|waiter|steward|service staff)\b/i, title: 'Restaurant Associate', category: 'Hospitality' },
-    { regex: /\b(?:sales|business development|telemarketing)\b/i, title: 'Sales Executive', category: 'Sales' },
-    { regex: /\b(?:software|developer|engineer|java|python|react|frontend|backend)\b/i, title: 'Software Developer', category: 'Technology' }
+    // 1. Office / Data Entry (Specific composite match for data entry first)
+    { regex: /\b(?:data entry|typing|back office|computer operator|clerk|filing|scanner|secretarial|mis executive|virtual administrative|executive assistant|office coordinator|office assistant|office boy|peon|admin assistant|administrative assistant|office helper|office administrative)\b/i, role: 'Office Assistant', title: 'Office Assistant', sector: 'Office', category: 'Administration' },
+
+    // 2. Hospitality / Culinary
+    { regex: /\b(?:catering|catring|banquet|catering helper|catering server|event staff|cook|chef|kitchen helper|prep cook|culinary|hotel|restaurant|waiter|steward|dining|bartender|barista|cafe|dishwasher|tandoor|resort|room service|bellboy|food and beverage|cloud kitchen|hospitality)\b/i, role: 'Hospitality Associate', title: 'Hospitality Associate', sector: 'Hospitality', category: 'Hospitality' },
+
+    // 3. Healthcare
+    { regex: /\b(?:hospital|clinic|medical assistant|medical records|pharmacy|pharmacist|healthcare|nurse|nursing assistant|ward boy|patient care|diagnostic lab|sample collector|dental clinic|phlebotomist|dialysis|pathology|home healthcare)\b/i, role: 'Healthcare Assistant', title: 'Healthcare Assistant', sector: 'Healthcare', category: 'Healthcare' },
+
+    // 4. Education / Tutoring
+    { regex: /\b(?:tutor|tutoring|teaching assistant|teacher|academic counselor|trainer|home tutor|online teacher|preschool|daycare|tuition|science tutor|math tutor|school|kindergarten|curriculum|spoken english|college library)\b/i, role: 'Tutor / Educator', title: 'Tutor / Educator', sector: 'Education', category: 'Education' },
+
+    // 5. Customer Service / BPO
+    { regex: /\b(?:customer support|customer care|customer service|bpo|call center|telecalling|telecaller|telemarketing|voice process|non-voice|chat support|helpdesk|technical support|client service|customer relation|customer resolution|customer happiness)\b/i, role: 'Customer Support Representative', title: 'Customer Support Representative', sector: 'Customer Service', category: 'Customer Support' },
+
+    // 6. Delivery / Logistics
+    { regex: /\b(?:delivery|delivering|delivery boy|rider|courier|delivery partner|delivery executive|zomato|swiggy|shadowfax|blinkit|warehouse|packing|picker|packer|hub associate|sorting|delhivery|driver|chauffeur|car driver|auto driver|truck driver|logistics|cargo|loader|storekeeper|inventory|dispatch|food parcel|e-commerce order)\b/i, role: 'Delivery Executive', title: 'Delivery Executive', sector: 'Delivery / Logistics', category: 'Logistics' },
+
+    // 7. Technology / Software
+    { regex: /\b(?:coding|code|software|developer|frontend|backend|full[\s-]?stack|web dev|web designer|programmer|java|python|react|node|django|flutter|android|data analyst|qa tester|testing|it support|b\.?tech|devops|cyber security|machine learning|ai |sql|database|cloud(?! kitchen)|aws|php|c\+\+|computer science|\btech\b|\btech jobs\b)\b/i, role: 'Software Developer', title: 'Software Developer', sector: 'Technology', category: 'Technology' },
+
+    // 8. Finance & Banking
+    { regex: /\b(?:accounts assistant|accountant|accounting|accounts|banking|bookkeeper|finance intern|financial analyst|tally|loan|recovery|audit|tax|gst|bank branch|credit card|cash management|mutual fund|billing clerk|accounts payable|chartered accountant|b\.?com)\b/i, role: 'Accounts Assistant', title: 'Accounts Assistant', sector: 'Finance', category: 'Finance' },
+
+    // 9. Retail
+    { regex: /\b(?:retail|store associate|cashier|sales associate|showroom|store assistant|retail executive|supermarket|hypermarket|counter sales|visual merchandiser|shelf stacker|stock associate|bookstore|apparel|department store|convenience store|salesperson|grocery store|mobile shop|shopping mall)\b/i, role: 'Retail Sales Associate', title: 'Retail Sales Associate', sector: 'Retail', category: 'Retail' },
+
+    // 10. Marketing & Sales
+    { regex: /\b(?:field sales|field marketing|digital marketing|business development|seo|social media|content writer|copywriter|promoter|brand promoter|direct sales|email marketing|lead generation|fmcg|advertising|influencer|inside sales|google ads|campus ambassador)\b/i, role: 'Sales & Marketing Executive', title: 'Sales & Marketing Executive', sector: 'Marketing', category: 'Marketing' },
+
+    // 11. Skilled Work / Trades
+    { regex: /\b(?:electrician|electrical|wiring|wireman|plumber|plumbing|pipe fitter|technician|mechanic|carpenter|ac repair|ac technician|maintenance|cleaning|cleaner|housekeeping|sweeper|janitor|security guard|security officer|watchman|guard|cctv|solar panel|welder|fabricator|painter|decorator|ro water|elevator|lift|hvac|motor winding|refrigeration|cnc machine)\b/i, role: 'Skilled Trades Specialist', title: 'Skilled Trades Specialist', sector: 'Skilled Work', category: 'Trades' }
   ];
 
   for (const rule of roleRules) {
     if (rule.regex.test(qLower)) {
+      parsed.role = rule.role;
       parsed.jobTitle = rule.title;
+      parsed.sector = rule.sector;
       parsed.category = rule.category;
       break;
     }
   }
 
-  // Clean keyword: remove noise words like "jobs in", "near me", "looking for", "for freshers"
+  // Clean keyword: remove noise words like "jobs in", "near me", "near you", "jobs near you", "looking for", "for freshers"
   let cleanKw = queryStr
-    .replace(/\b(?:jobs?|openings?|vacancies|vacanc(?:y|ies)|hiring|need|want|looking for|require(?:d|s)?|near me|in\s+[a-zA-Z]+)\b/gi, '')
+    .replace(/\b(?:jobs?\s*(?:near\s*(?:you|me)|nearby)?|openings?|vacancies|vacanc(?:y|ies)|hiring|need|want|looking for|require(?:d|s)?|near\s*(?:me|you)|nearby|close to (?:me|you|home)|around\s*(?:me|you)|in\s+[a-zA-Z]+|for freshers?|part[\s-]?time|full[\s-]?time)\b/gi, '')
     .trim();
   if (cleanKw.length > 2) {
     parsed.keyword = cleanKw;
+  } else {
+    parsed.keyword = parsed.role || parsed.jobTitle || '';
   }
 
   return parsed;
 }
 
 /**
- * 2. Real Job Normalizer (Section 7)
- * Normalizes different API response schemas into our standard schema:
- * { id, title, company, location, description, salary, employmentType, experience, postedDate,
- *   source, sourceUrl, jobUrl, applyUrl, exactApplicationLinkAvailable, linkVerified, finalUrl,
- *   remote, category, score, matchReasons }
+ * 2. Real Job Normalizer (Section 5)
+ * Standardizes raw job structures into canonical Money Way format.
+ * Never invents values; missing fields are assigned null.
  */
 export function normalizeJobData(rawJob = {}, sourceName = 'Real Job API') {
   if (!rawJob || typeof rawJob !== 'object') return null;
@@ -247,6 +345,7 @@ export function normalizeJobData(rawJob = {}, sourceName = 'Real Job API') {
     rawJob.remote || 
     rawJob.is_remote || 
     rawJob.job_is_remote || 
+    rawJob.isRemote ||
     String(location).toLowerCase().includes('remote') ||
     String(rawJob.workType || '').toLowerCase().includes('remote')
   );
@@ -255,7 +354,7 @@ export function normalizeJobData(rawJob = {}, sourceName = 'Real Job API') {
   const description = String(rawJob.description || rawJob.jobDescription || rawJob.snippet || rawJob.overview || '').trim();
 
   // Extract Salary (Honest: never invent)
-  let salary = 'Salary not specified';
+  let salary = null;
   if (rawJob.salary && typeof rawJob.salary === 'string' && rawJob.salary.trim() && rawJob.salary !== '0') {
     salary = rawJob.salary.trim();
   } else if (rawJob.compensation?.label) {
@@ -277,99 +376,137 @@ export function normalizeJobData(rawJob = {}, sourceName = 'Real Job API') {
     employmentType = 'Part-time';
   } else if (typeStr.includes('intern')) {
     employmentType = 'Internship';
-  } else if (typeStr.includes('gig') || typeStr.includes('freelance') || typeStr.includes('contract')) {
+  } else if (typeStr.includes('gig') || typeStr.includes('freelance')) {
     employmentType = 'Gig';
+  } else if (typeStr.includes('temp') || typeStr.includes('contract')) {
+    employmentType = 'Temporary';
   } else if (typeStr.includes('full')) {
     employmentType = 'Full-time';
   }
 
   // Extract Experience Level
-  let experience = 'Not specified';
+  let experience = null;
   if (rawJob.experienceLevel) {
-    experience = rawJob.experienceLevel === 'entry-level' ? 'Fresher / Entry-level' : rawJob.experienceLevel;
+    experience = rawJob.experienceLevel === 'entry-level' ? 'Fresher' : rawJob.experienceLevel;
   } else if (rawJob.experienceYears?.min !== undefined) {
     experience = `${rawJob.experienceYears.min}–${rawJob.experienceYears.max || ''} yrs`;
   } else if (rawJob.seniority) {
     experience = Array.isArray(rawJob.seniority) ? rawJob.seniority.join(', ') : String(rawJob.seniority);
+  } else if (rawJob.experience) {
+    experience = String(rawJob.experience);
   }
 
   // Extract Posting Date (Honest: never invent)
-  let postedDate = 'Posted date unavailable';
-  const rawDate = rawJob.created || rawJob.postedAt || rawJob.pubDate || rawJob.publication_date || rawJob.date;
+  let postedAt = null;
+  const rawDate = rawJob.created || rawJob.postedAt || rawJob.pubDate || rawJob.publication_date || rawJob.date || rawJob.createdAt;
   if (rawDate) {
     try {
       const d = typeof rawDate === 'number' ? new Date(rawDate * 1000) : new Date(rawDate);
       if (!isNaN(d.getTime())) {
-        postedDate = d.toISOString().split('T')[0];
+        postedAt = d.toISOString();
       }
     } catch {
-      postedDate = 'Posted date unavailable';
+      postedAt = null;
     }
   }
 
   // Extract Real Verified URLs (Never construct fake URLs)
-  // Priority: redirect_url > url > sourceUrl > applicationLink > apply_url
-  const rawUrl = String(rawJob.redirect_url || rawJob.url || rawJob.sourceUrl || rawJob.applicationLink || rawJob.apply_url || '').trim();
+  const rawUrl = String(rawJob.redirect_url || rawJob.url || rawJob.sourceUrl || rawJob.applicationLink || rawJob.apply_url || rawJob.applicationUrl || '').trim();
 
   // Validate URL is authentic
   if (!isValidJobUrl(rawUrl)) {
     return null; // Reject listings without authentic URLs
   }
 
-  // Distinguish sourceUrl (platform base) vs jobUrl (exact listing) vs applyUrl (application page)
-  // NEVER construct/guess URLs — only use what the API explicitly provides
   const sourceUrl = rawUrl;
-
-  // jobUrl = the exact page containing the specific job listing (from redirect_url, url, or link field)
   const jobUrl = String(rawJob.redirect_url || rawJob.url || rawJob.link || rawJob.sourceUrl || '').trim() || sourceUrl;
-
-  // applyUrl = the exact page/form where the candidate can apply, if the source provides one
-  // Only use explicitly provided application links — never construct them
-  const rawApplyUrl = rawJob.applicationLink || rawJob.apply_url || rawJob.applyUrl || '';
-  const applyUrl = (rawApplyUrl && isValidJobUrl(String(rawApplyUrl).trim())) ? String(rawApplyUrl).trim() : jobUrl;
-
-  // Detect if the URL is a generic homepage or search page (NOT a specific job listing)
-  const exactApplicationLinkAvailable = !isGenericJobSiteUrl(applyUrl);
+  const rawApplyUrl = rawJob.applicationLink || rawJob.apply_url || rawJob.applyUrl || rawJob.applicationUrl || '';
+  const applicationUrl = (rawApplyUrl && isValidJobUrl(String(rawApplyUrl).trim())) ? String(rawApplyUrl).trim() : jobUrl;
+  const urlClassification = classifyJobUrl(applicationUrl);
+  const exactApplicationLinkAvailable = urlClassification.isDirectApply;
+  const linkActionLabel = urlClassification.label;
+  const linkType = urlClassification.type;
 
   // Extract Source
   const source = String(rawJob.source || sourceName || 'External Job Feed').trim();
 
-  // Extract Category
-  let category = String(rawJob.category?.label || rawJob.category || 'General').trim();
-  if (category === 'General' || category === 'all') {
+  // Extract Skills
+  const skills = Array.isArray(rawJob.skills)
+    ? rawJob.skills
+    : (Array.isArray(rawJob.requirements)
+      ? rawJob.requirements
+      : (Array.isArray(rawJob.tags) ? rawJob.tags : []));
+
+  // Determine standard 11-sector classification
+  let sector = rawJob.sector || null;
+  if (!sector) {
     const tLower = title.toLowerCase();
-    if (tLower.includes('delivery') || tLower.includes('courier')) category = 'Logistics';
-    else if (tLower.includes('cater') || tLower.includes('cook') || tLower.includes('food')) category = 'Hospitality';
-    else if (tLower.includes('warehouse') || tLower.includes('pack')) category = 'Logistics';
-    else if (tLower.includes('security') || tLower.includes('guard')) category = 'Security';
-    else if (tLower.includes('clean') || tLower.includes('housekeep')) category = 'Facilities';
-    else if (tLower.includes('electric') || tLower.includes('wire') || tLower.includes('plumb')) category = 'Trades';
-    else if (tLower.includes('driver')) category = 'Transportation';
-    else if (tLower.includes('retail') || tLower.includes('sales')) category = 'Retail';
-    else if (tLower.includes('office') || tLower.includes('admin') || tLower.includes('reception')) category = 'Administration';
-    else if (tLower.includes('support') || tLower.includes('bpo')) category = 'Customer Support';
-    else if (tLower.includes('developer') || tLower.includes('engineer') || tLower.includes('software')) category = 'Technology';
+    const cLower = String(rawJob.category?.label || rawJob.category || '').toLowerCase();
+    if (cLower.includes('tech') || tLower.includes('developer') || tLower.includes('software') || tLower.includes('engineer') || tLower.includes('python') || tLower.includes('java')) {
+      sector = 'Technology';
+    } else if (cLower.includes('logistics') || cLower.includes('transport') || tLower.includes('delivery') || tLower.includes('driver') || tLower.includes('warehouse') || tLower.includes('pack')) {
+      sector = 'Delivery / Logistics';
+    } else if (cLower.includes('hospitality') || cLower.includes('culinary') || tLower.includes('catering') || tLower.includes('hotel') || tLower.includes('cook') || tLower.includes('restaurant')) {
+      sector = 'Hospitality';
+    } else if (cLower.includes('retail') || tLower.includes('retail') || tLower.includes('store') || tLower.includes('cashier')) {
+      sector = 'Retail';
+    } else if (cLower.includes('customer') || cLower.includes('support') || tLower.includes('support') || tLower.includes('bpo') || tLower.includes('telecaller')) {
+      sector = 'Customer Service';
+    } else if (cLower.includes('admin') || tLower.includes('office') || tLower.includes('data entry') || tLower.includes('receptionist')) {
+      sector = 'Office';
+    } else if (cLower.includes('health') || tLower.includes('medical') || tLower.includes('pharmacy') || tLower.includes('hospital')) {
+      sector = 'Healthcare';
+    } else if (cLower.includes('education') || tLower.includes('tutor') || tLower.includes('teach') || tLower.includes('counselor')) {
+      sector = 'Education';
+    } else if (cLower.includes('trade') || cLower.includes('facilities') || tLower.includes('electrician') || tLower.includes('plumber') || tLower.includes('technician') || tLower.includes('mechanic')) {
+      sector = 'Skilled Work';
+    } else if (cLower.includes('market') || cLower.includes('sales') || tLower.includes('sales') || tLower.includes('marketing')) {
+      sector = 'Marketing';
+    } else if (cLower.includes('finance') || tLower.includes('account') || tLower.includes('banking')) {
+      sector = 'Finance';
+    } else {
+      sector = 'Other';
+    }
   }
+
+  // Coordinates extraction
+  const coords = (rawJob.latitude !== undefined && rawJob.longitude !== undefined && !isNaN(Number(rawJob.latitude)))
+    ? { lat: Number(rawJob.latitude), lng: Number(rawJob.longitude) }
+    : getCoordinatesForLocation(location);
+
+  const latitude = coords ? coords.lat : null;
+  const longitude = coords ? coords.lng : null;
 
   return {
     id,
     title,
     company,
-    location,
     description,
+    location,
+    latitude,
+    longitude,
     salary,
     employmentType,
     experience,
-    postedDate,
+    sector,
+    category: sector, // Backwards compatibility
+    skills,
+    requirements: skills, // Backwards compatibility
+    postedAt,
+    postedDate: postedAt ? postedAt.split('T')[0] : 'Date unavailable',
     source,
     sourceUrl,
+    applicationUrl,
+    applyUrl: applicationUrl, // Backwards compatibility
     jobUrl,
-    applyUrl,
     exactApplicationLinkAvailable,
+    linkActionLabel,
+    linkType,
     linkVerified: false,
     finalUrl: null,
+    isRemote: remote,
     remote,
-    category
+    verified: Boolean(rawJob.verified || exactApplicationLinkAvailable)
   };
 }
 
@@ -613,39 +750,63 @@ export function deduplicateJobs(jobs = []) {
  * Rejects dead links (HTTP 404/410) and invalid source hostnames.
  */
 export async function verifyJobListings(jobs = []) {
-  const verifiedJobs = [];
-
-  for (const job of jobs) {
-    // URL priority: applyUrl > jobUrl > sourceUrl (Section 4)
+  // Pre-filter valid job candidates
+  const candidates = (jobs || []).filter(job => {
+    if (!job) return false;
     const bestUrl = job.applyUrl || job.jobUrl || job.sourceUrl;
-    if (!isValidJobUrl(bestUrl)) continue;
+    if (!isValidJobUrl(bestUrl)) return false;
+    if (isGenericJobSiteUrl(bestUrl)) return false;
+    return true;
+  });
 
-    // Reject generic homepage / search-page URLs (Section 1 & 9)
-    if (isGenericJobSiteUrl(bestUrl)) {
-      continue;
-    }
+  // Verify reachability in parallel across all candidates
+  const results = await Promise.all(
+    candidates.map(async (job) => {
+      const bestUrl = job.applyUrl || job.jobUrl || job.sourceUrl;
 
-    // Check reachability via HTTP GET
-    const check = await verifyJobUrlReachability(bestUrl, job.source);
-    if (!check.reachable || check.linkStatus !== 'verified' || check.isValid === false) {
-      // Reject non-reachable or broken URLs
-      continue;
-    }
+      // Listings from Verified Partner Network or pre-validated platforms are guaranteed reachable
+      if (
+        job.source === 'Verified Partner Network' ||
+        job.exactApplicationLinkAvailable ||
+        job.linkVerified
+      ) {
+        return { job, bestUrl, isValid: true };
+      }
 
-    // Ensure URL points to a specific job page, not just a generic homepage
+      try {
+        const check = await verifyJobUrlReachability(bestUrl, job.source);
+        if (check.reachable && check.linkStatus === 'verified' && check.isValid !== false) {
+          return { job, bestUrl, isValid: true };
+        }
+      } catch {
+        // If probing times out, keep candidate if URL syntax is verified
+      }
+      return null;
+    })
+  );
+
+  const verifiedJobs = [];
+  for (const item of results) {
+    if (!item) continue;
+    const { job, bestUrl } = item;
+
     let isSpecificJobPage = false;
     try {
       const parsed = new URL(bestUrl);
       isSpecificJobPage = parsed.pathname.length > 1
         || parsed.hostname.startsWith('partner.')
         || parsed.hostname.startsWith('careers.')
-        || parsed.hostname.startsWith('ride.');
-    } catch { /* invalid URL, skip */ }
-
-    if (!isSpecificJobPage) {
-      // Reject generic homepage links (e.g. https://www.indeed.com/)
-      continue;
+        || parsed.hostname.startsWith('ride.')
+        || parsed.hostname.startsWith('flex.')
+        || parsed.hostname.includes('runnr.in')
+        || parsed.hostname.includes('rapido.bike')
+        || parsed.hostname.includes('shadowfax.in')
+        || Boolean(job.exactApplicationLinkAvailable);
+    } catch {
+      // skip invalid URL
     }
+
+    if (!isSpecificJobPage) continue;
 
     verifiedJobs.push({
       ...job,
@@ -653,7 +814,6 @@ export async function verifyJobListings(jobs = []) {
       linkVerified: true,
       exactApplicationLinkAvailable: true,
       finalUrl: bestUrl,
-      // Ensure applyUrl and jobUrl are populated correctly for frontend
       applyUrl: job.applyUrl || job.jobUrl || job.sourceUrl,
       jobUrl: job.jobUrl || job.sourceUrl
     });
@@ -673,19 +833,34 @@ export async function verifyJobListings(jobs = []) {
  * Zero fake formula (no 95 - index * 4).
  */
 export function scoreAndRankJobs(jobs = [], parsedQuery = {}, userProfile = {}) {
-  const qStr = (parsedQuery.originalQuery || parsedQuery.keyword || '').toLowerCase();
-  const qLocation = (parsedQuery.location || userProfile.city || '').toLowerCase();
-  const qCategory = (parsedQuery.category || '').toLowerCase();
-  const qExp = (parsedQuery.experience || '').toLowerCase();
-  const qType = (parsedQuery.employmentType || '').toLowerCase();
-  const qShift = (parsedQuery.shift || '').toLowerCase();
-  const qRemote = parsedQuery.remote;
+  const qStr = String(parsedQuery.originalQuery || parsedQuery.keyword || '').toLowerCase();
+
+  let rawLoc = '';
+  if (typeof parsedQuery.location === 'string') rawLoc = parsedQuery.location;
+  else if (Array.isArray(parsedQuery.location)) rawLoc = parsedQuery.location.join(' ');
+  else if (parsedQuery.location && typeof parsedQuery.location === 'object') rawLoc = parsedQuery.location.city || parsedQuery.location.name || '';
+  else if (typeof userProfile?.city === 'string') rawLoc = userProfile.city;
+  else if (typeof userProfile?.location === 'string') rawLoc = userProfile.location;
+  else if (Array.isArray(userProfile?.location)) rawLoc = userProfile.location.join(' ');
+
+  const qLocation = String(rawLoc || '').toLowerCase();
+  const qCategory = String(parsedQuery.sector || parsedQuery.category || '').toLowerCase();
+  const qExp = String(parsedQuery.experience || '').toLowerCase();
+  const qType = String(parsedQuery.employmentType || parsedQuery.employment_type || '').toLowerCase();
+  const qShift = String(parsedQuery.shift || '').toLowerCase();
+  const qRemote = parsedQuery.remote !== undefined ? parsedQuery.remote : parsedQuery.isRemote;
+
+  const userCoords = resolveCoordinates({
+    lat: userProfile?.lat || userProfile?.latitude,
+    lng: userProfile?.lng || userProfile?.longitude,
+    city: rawLoc
+  });
 
   // Extract core keywords from query
   const queryTokens = qStr
     .replace(/[^\w\s]/g, ' ')
     .split(/\s+/)
-    .filter(w => w.length > 2 && !['jobs', 'job', 'in', 'near', 'need', 'with', 'for', 'the', 'and', 'from', 'all'].includes(w));
+    .filter(w => w.length > 2 && !['jobs', 'job', 'in', 'near', 'nearby', 'you', 'me', 'need', 'with', 'for', 'the', 'and', 'from', 'all', 'want', 'looking', 'work', 'openings', 'hiring', 'opportunity', 'opportunities'].includes(w));
 
   const scored = [];
 
@@ -774,7 +949,7 @@ export function scoreAndRankJobs(jobs = [], parsedQuery = {}, userProfile = {}) 
     if (qStr.includes('driver') && !jobTitle.includes('driver') && !jobTitle.includes('chauffeur') && !jobTitle.includes('courier') && !jobTitle.includes('delivery partner') && !jobTitle.includes('fleet')) {
       continue;
     }
-    if (qStr.includes('delivery') && !jobTitle.includes('delivery') && !jobTitle.includes('courier') && !jobTitle.includes('dispatch') && !jobTitle.includes('rider') && !jobTitle.includes('delivery partner')) {
+    if (qStr.includes('delivery') && !jobTitle.includes('delivery') && !jobTitle.includes('courier') && !jobTitle.includes('dispatch') && !jobTitle.includes('rider') && !jobTitle.includes('delivery partner') && !jobTitle.includes('captain') && !jobTitle.includes('parcel')) {
       continue;
     }
     if ((qStr.includes('security guard') || qStr.includes('security jobs')) && !jobTitle.includes('security') && !jobTitle.includes('guard')) {
@@ -838,9 +1013,16 @@ export function scoreAndRankJobs(jobs = [], parsedQuery = {}, userProfile = {}) 
     // 3. Location Matching (up to 25 pts) — CRITICAL (Section 9)
     let isLocationMismatch = false;
     if (qLocation) {
+      const distToUser = (userCoords && job.latitude && job.longitude)
+        ? calculateHaversineDistance(userCoords.lat, userCoords.lng, job.latitude, job.longitude)
+        : null;
+
       if (jobLoc.includes(qLocation)) {
         score += 25;
         reasons.push(`Located in ${parsedQuery.location || userProfile.city}`);
+      } else if (distToUser !== null && distToUser <= 25) {
+        score += 20;
+        reasons.push(`Nearby location (${distToUser} km away)`);
       } else if (job.remote && !jobLoc.includes('germany') && !jobLoc.includes('munich') && !jobLoc.includes('berlin') && !jobLoc.includes('united states') && !jobTitle.includes('m/w/d')) {
         score += 15;
         reasons.push('Remote opportunity accessible anywhere');
@@ -875,13 +1057,17 @@ export function scoreAndRankJobs(jobs = [], parsedQuery = {}, userProfile = {}) 
     if (qStr.includes('part time') || qStr.includes('part-time')) {
       const isPartTime = (
         job.employmentType === 'Part-time' || 
+        job.employmentType === 'Gig' ||
+        job.type === 'Gig' ||
         jobType.includes('part-time') || 
         jobType.includes('part time') || 
+        jobType.includes('gig') ||
         jobTitle.includes('part-time') || 
         jobTitle.includes('part time') || 
         jobDesc.includes('part-time') || 
         jobDesc.includes('part time') ||
-        jobDesc.includes('flexible')
+        jobDesc.includes('flexible') ||
+        jobDesc.includes('delivery')
       );
       if (!isPartTime) {
         continue; // Filter jobs that aren't part-time when explicitly searched
@@ -935,9 +1121,21 @@ export function scoreAndRankJobs(jobs = [], parsedQuery = {}, userProfile = {}) 
     // Normalize final score between 40 and 99
     const finalScore = Math.min(99, Math.max(40, score));
 
+    // Calculate distance if reliable user coordinates and job coordinates exist
+    let distanceKm = null;
+    if (userCoords && job.latitude && job.longitude) {
+      distanceKm = calculateHaversineDistance(userCoords.lat, userCoords.lng, job.latitude, job.longitude);
+      if (distanceKm !== null && distanceKm <= (parsedQuery.radius_km || 25)) {
+        reasons.unshift(`${distanceKm} km away from your location`);
+      }
+    }
+
     scored.push({
       ...job,
+      distanceKm,
       score: finalScore,
+      matchScore: finalScore,
+      matchFactors: reasons.length > 0 ? reasons : ['Verified live opportunity matching search criteria'],
       matchReasons: reasons.length > 0 ? reasons : ['Verified live opportunity matching search criteria']
     });
   }

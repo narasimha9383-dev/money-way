@@ -15,9 +15,15 @@ import {
   Menu,
   X,
   LogOut,
-  User
+  User,
+  MapPin,
+  Bell,
+  Building2,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { useAuth } from '../AuthContext.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
 
 export default function Navbar({ 
   currentTab, 
@@ -27,17 +33,17 @@ export default function Navbar({
   setComplexityMode
 }) {
   const { user, isAuthenticated, isAdmin, logout, openAuthModal, savedIds } = useAuth();
+  const { theme, isDark, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Sparkles },
-    { id: 'discover', label: 'Discover', icon: Compass },
-    { id: 'search', label: 'Search', icon: Search },
-    { id: 'compare', label: 'Compare', icon: Scale },
-    { id: 'plans', label: 'Action Plans', icon: CheckSquare },
-    { id: 'scam-center', label: 'Scam Shield', icon: ShieldAlert, highlight: true },
-    { id: 'advisor', label: 'AI Advisor', icon: MessageSquare },
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'detailsOfOrganization', label: 'Organizations', icon: Building2 },
+    { id: 'search', label: 'Search', icon: Search },
+    { id: 'nearby', label: 'Jobs Near Me', icon: MapPin },
+    { id: 'saved', label: 'Saved', icon: Bookmark },
+    { id: 'alerts', label: 'Alerts', icon: Bell }
   ];
 
   const handleTabClick = (tabId) => {
@@ -76,7 +82,10 @@ export default function Navbar({
           <nav className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentTab === item.id;
+              const isActive = currentTab === item.id || 
+                (item.id === 'dashboard' && currentTab === 'profile') ||
+                (item.id === 'detailsOfOrganization' && currentTab === 'discover') ||
+                (item.id === 'discover' && currentTab === 'detailsOfOrganization');
               return (
                 <button
                   key={item.id}
@@ -134,6 +143,20 @@ export default function Navbar({
                 🔵 Advanced
               </button>
             </div>
+
+            {/* Dark / Bright Mode Toggle */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`p-2 rounded-lg border transition-all cursor-pointer ${
+                isDark 
+                  ? 'bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-800 border-slate-700/60' 
+                  : 'bg-amber-50 border-amber-300 text-amber-600 hover:text-amber-800 hover:bg-amber-100 shadow-sm'
+              }`}
+              title={isDark ? "Switch to Bright Mode" : "Switch to Dark Mode"}
+            >
+              {isDark ? <Moon className="w-4 h-4 text-emerald-400" /> : <Sun className="w-4 h-4 text-amber-500" />}
+            </button>
 
             {/* Saved Bookmarks Button */}
             <button
@@ -200,32 +223,23 @@ export default function Navbar({
         {mobileMenuOpen && (
           <div className="lg:hidden py-4 border-t border-slate-800 space-y-1">
             <div className="flex sm:hidden items-center justify-between px-3 py-2 bg-slate-950 rounded-lg mb-2 border border-slate-800">
-              <span className="text-xs text-slate-400">Mode:</span>
-              <div className="flex gap-1 text-xs">
-                <button
-                  onClick={() => setComplexityMode('beginner')}
-                  className={`px-2 py-0.5 rounded ${complexityMode === 'beginner' ? 'bg-emerald-600 text-white' : 'text-slate-400'}`}
-                >
-                  Beginner
-                </button>
-                <button
-                  onClick={() => setComplexityMode('all')}
-                  className={`px-2 py-0.5 rounded ${complexityMode === 'all' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setComplexityMode('advanced')}
-                  className={`px-2 py-0.5 rounded ${complexityMode === 'advanced' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
-                >
-                  Advanced
-                </button>
-              </div>
+              <span className="text-xs text-slate-400">Display Theme:</span>
+              <button 
+                type="button"
+                onClick={toggleTheme}
+                className="px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-xs font-medium text-white flex items-center gap-1.5"
+              >
+                {isDark ? <Moon className="w-3.5 h-3.5 text-emerald-400" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
+                <span>{isDark ? 'Dark' : 'Bright'}</span>
+              </button>
             </div>
 
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentTab === item.id;
+              const isActive = currentTab === item.id || 
+                (item.id === 'dashboard' && currentTab === 'profile') ||
+                (item.id === 'detailsOfOrganization' && currentTab === 'discover') ||
+                (item.id === 'discover' && currentTab === 'detailsOfOrganization');
               return (
                 <button
                   key={item.id}

@@ -13,8 +13,10 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { useTheme } from '../context/ThemeContext.jsx';
 
 export default function CinematicBackground({ scrollProgress = 0 }) {
+  const { isDark } = useTheme();
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [webglSupported, setWebglSupported] = useState(true);
@@ -91,7 +93,7 @@ export default function CinematicBackground({ scrollProgress = 0 }) {
 
     // ── SCENE & RENDERER SETUP ──
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x070a12, 0.007);
+    scene.fog = new THREE.FogExp2(isDark ? 0x070a12 : 0xF8FAFC, 0.007);
 
     const camera = new THREE.PerspectiveCamera(40, vpW() / vpH(), 0.2, 400);
     camera.position.set(0, 8.8, 28);
@@ -648,7 +650,9 @@ export default function CinematicBackground({ scrollProgress = 0 }) {
       ref={containerRef}
       className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden"
       style={{
-        background: 'radial-gradient(ellipse 130% 90% at 50% -10%, #0d1629 0%, #080c14 55%, #05070a 100%)'
+        background: isDark
+          ? 'radial-gradient(ellipse 130% 90% at 50% -10%, #0d1629 0%, #080c14 55%, #05070a 100%)'
+          : 'radial-gradient(ellipse 130% 90% at 50% -10%, #ECFDF5 0%, #F1F5F9 55%, #F8FAFC 100%)'
       }}
       aria-hidden="true"
     >
@@ -658,14 +662,16 @@ export default function CinematicBackground({ scrollProgress = 0 }) {
           className="w-full h-full block absolute inset-0"
         />
       ) : (
-        <div className="absolute inset-0 bg-gradient-to-b from-[#080c14] via-[#0d1629] to-[#05070a] opacity-90" />
+        <div className={`absolute inset-0 ${isDark ? 'bg-gradient-to-b from-[#080c14] via-[#0d1629] to-[#05070a]' : 'bg-gradient-to-b from-white via-slate-100 to-slate-200'} opacity-90`} />
       )}
 
       {/* Modern High-End Vignette & Center Clear Zone (Maximizes UI text & search readability) */}
       <div 
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(120% 90% at 50% 30%, transparent 45%, rgba(5,7,10,0.45) 100%)'
+          background: isDark
+            ? 'radial-gradient(120% 90% at 50% 30%, transparent 45%, rgba(5,7,10,0.45) 100%)'
+            : 'radial-gradient(120% 90% at 50% 30%, transparent 45%, rgba(241,245,249,0.3) 100%)'
         }}
       />
     </div>

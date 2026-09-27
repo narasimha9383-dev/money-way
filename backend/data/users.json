@@ -29,8 +29,8 @@
     },
     "actionPlans": [],
     "createdAt": "2026-09-25T12:18:39.418Z",
-    "updatedAt": "2026-09-27T09:22:04.503Z",
-    "lastLoginAt": "2026-09-27T09:22:04.503Z"
+    "updatedAt": "2026-09-27T15:55:07.991Z",
+    "lastLoginAt": "2026-09-27T15:55:07.991Z"
   },
   {
     "id": "usr_demo_user",
@@ -1364,5 +1364,89 @@
     "createdAt": "2026-09-27T09:22:04.526Z",
     "updatedAt": "2026-09-27T09:22:04.562Z",
     "lastLoginAt": "2026-09-27T09:22:04.562Z"
+  },
+  {
+    "id": "usr_1790524232107_vuiz4by",
+    "name": "Test Explorer",
+    "email": "testuser_1790524231963@example.com",
+    "passwordHash": "$2b$10$N.xYLR6bmx8tYyOefUWRI.zOm.oBfVLx9GNXoNnexAlYyGIWHoXWS",
+    "googleId": "linked_google_uid_1790524232605",
+    "firebaseUid": "linked_google_uid_1790524232605",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T15:50:32.107Z",
+    "updatedAt": "2026-09-27T15:50:32.607Z",
+    "lastLoginAt": "2026-09-27T15:50:32.607Z"
+  },
+  {
+    "id": "usr_1790524232545_77ep0j0",
+    "name": "Google Explorer",
+    "email": "google_user_1790524232542@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790524232542",
+    "firebaseUid": "google_uid_1790524232542",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T15:50:32.545Z",
+    "updatedAt": "2026-09-27T15:50:32.579Z",
+    "lastLoginAt": "2026-09-27T15:50:32.579Z"
+  },
+  {
+    "id": "usr_1790524507559_yztgwkb",
+    "name": "Test Explorer",
+    "email": "testuser_1790524507369@example.com",
+    "passwordHash": "$2b$10$dxBmH.U7kev4oAjmNIVomun6xcVmNbJWH9BWn/pqfkwxVQ6fPJbtG",
+    "googleId": "linked_google_uid_1790524508056",
+    "firebaseUid": "linked_google_uid_1790524508056",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T15:55:07.559Z",
+    "updatedAt": "2026-09-27T15:55:08.057Z",
+    "lastLoginAt": "2026-09-27T15:55:08.057Z"
+  },
+  {
+    "id": "usr_1790524508011_24uh1fu",
+    "name": "Google Explorer",
+    "email": "google_user_1790524508009@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790524508009",
+    "firebaseUid": "google_uid_1790524508009",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T15:55:08.011Z",
+    "updatedAt": "2026-09-27T15:55:08.043Z",
+    "lastLoginAt": "2026-09-27T15:55:08.043Z"
   }
 ]

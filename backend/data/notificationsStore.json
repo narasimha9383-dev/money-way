@@ -1,0 +1,26 @@
+[
+  {
+    "id": "notif_rt_1790530679451_e2fe",
+    "type": "nearby_job",
+    "category": "Nearby Job",
+    "title": "New Real-Time Opportunity in Vadlamudi!",
+    "message": "New Delivery Partner opening in Vadlamudi at Swiggy Partner Network (₹18,000 - ₹28,000/month)",
+    "jobId": "partner-local-delivery",
+    "targetUrl": "/jobs/partner-local-delivery",
+    "job": {
+      "id": "partner-local-delivery",
+      "title": "New Delivery Partner opening in Vadlamudi",
+      "company": "Swiggy Partner Network",
+      "location": "Vadlamudi, Andhra Pradesh",
+      "salary": "₹18,000 - ₹28,000/month",
+      "postedAt": "2026-09-27T17:37:59.451Z",
+      "exactApplicationLinkAvailable": true,
+      "linkActionLabel": "Apply on Partner Portal",
+      "applicationUrl": "https://ride.swiggy.com/",
+      "verified": true
+    },
+    "read": true,
+    "createdAt": "2026-09-27T17:37:59.451Z",
+    "readAt": "2026-09-27T17:51:19.892Z"
+  }
+]

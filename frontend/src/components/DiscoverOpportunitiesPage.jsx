@@ -1,808 +1,391 @@
 // frontend/src/components/DiscoverOpportunitiesPage.jsx
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+// Section 22: Canonical Discover Page (/discover)
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   MapPin,
-  Compass,
-  RotateCw,
-  SlidersHorizontal,
+  Clock,
+  Sparkles,
   Bookmark,
   ExternalLink,
-  Sparkles,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  Coins,
-  Briefcase,
-  X,
-  ChevronDown,
+  ChevronRight,
   Navigation,
-  Globe2,
-  ArrowUpRight,
-  Filter,
-  Layers
+  ArrowRight,
+  Building,
+  CheckCircle2,
+  TrendingUp,
+  Briefcase
 } from 'lucide-react';
-import { fetchOpportunities, refreshOpportunitiesFeedApi } from '../services/api.js';
-import { useAuth } from '../AuthContext.jsx';
-
-/**
- * Format relative time from ISO string or timestamp
- */
-function formatRelativeTime(dateString) {
-  if (!dateString) return 'Recently';
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return 'Recently';
-
-  const now = new Date();
-  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-  if (diffSec < 60) return 'Just now';
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 30) return `${diffDays}d ago`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
+import { 
+  searchJobsApi, 
+  fetchNearbyJobsApi, 
+  fetchRecentJobsApi, 
+  fetchRecommendedJobsApi,
+  fetchSavedJobsApi 
+} from '../services/api.js';
+import JobCard from './JobCard.jsx';
 
 export default function DiscoverOpportunitiesPage({
+  userProfile,
   onSelectOpportunity,
-  onOpenQuestionnaire,
-  userProfile
+  onNavigateToTab,
+  onOpenExternalLink,
+  isSaved = () => false,
+  onSaveJob = () => {}
 }) {
-  const { user, isAuthenticated, savedIds, toggleSaveOpportunity, openAuthModal } = useAuth();
-
-  // Search & Filter State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [category, setCategory] = useState('all');
-  const [location, setLocation] = useState('all');
-  const [remoteFilter, setRemoteFilter] = useState('all'); // 'all' | 'true' | 'false'
-  const [opportunityType, setOpportunityType] = useState('all');
-  const [paidOnly, setPaidOnly] = useState(false);
-  const [freshness, setFreshness] = useState('any'); // 'any' | 'today' | '3days' | '7days'
-  const [sortBy, setSortBy] = useState('relevance'); // 'relevance' | 'newest' | 'compensation'
-
-  // Data & Pagination State
-  const [opportunities, setOpportunities] = useState([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(null);
-  const [availableSources, setAvailableSources] = useState([]);
-  const [availableCategories, setAvailableCategories] = useState([]);
-  const [availableLocations, setAvailableLocations] = useState([]);
-
-  // UI Status State
+  const [searchInput, setSearchInput] = useState('');
+  const [nearbyJobs, setNearbyJobs] = useState([]);
+  const [recentJobs, setRecentJobs] = useState([]);
+  const [recommendedJobs, setRecommendedJobs] = useState([]);
+  const [savedJobs, setSavedJobs] = useState([]);
+  const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshToast, setRefreshToast] = useState(null);
-  const [error, setError] = useState(null);
-  const [showFiltersModal, setShowFiltersModal] = useState(false);
-  const [locatingUser, setLocatingUser] = useState(false);
 
-  // Recommendations
-  const [recommendations, setRecommendations] = useState([]);
-  const [showRecommendations, setShowRecommendations] = useState(true);
-
-  // Search input debouncing
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-      setPage(1);
-    }, 320);
-    return () => clearTimeout(handler);
-  }, [searchQuery]);
-
-  // Load opportunities whenever filters change or page 1 is reset
-  const loadOpportunities = useCallback(async (pageNum = 1, append = false) => {
-    if (pageNum === 1) {
-      setLoading(true);
-      setError(null);
-    } else {
-      setLoadingMore(true);
-    }
-
-    try {
-      const params = {
-        search: debouncedQuery.trim() || undefined,
-        category: category !== 'all' ? category : undefined,
-        location: location !== 'all' ? location : undefined,
-        remote: remoteFilter !== 'all' ? remoteFilter : undefined,
-        opportunityType: opportunityType !== 'all' ? opportunityType : undefined,
-        paidOnly: paidOnly ? 'true' : undefined,
-        freshness: freshness !== 'any' ? freshness : undefined,
-        sort: sortBy,
-        page: pageNum,
-        limit: 18
-      };
-
-      const res = await fetchOpportunities(params);
-      const items = res.opportunities || [];
-
-      if (append) {
-        setOpportunities(prev => [...prev, ...items]);
-      } else {
-        setOpportunities(items);
-      }
-
-      setTotalCount(res.total || 0);
-      setHasMore(Boolean(res.hasMore));
-      setLastUpdated(res.lastUpdated || new Date().toISOString());
-
-      if (res.sources && Array.isArray(res.sources)) {
-        setAvailableSources(res.sources);
-      }
-      if (res.categories && Array.isArray(res.categories)) {
-        setAvailableCategories(res.categories);
-      }
-      if (res.locations && Array.isArray(res.locations)) {
-        setAvailableLocations(res.locations);
-      }
-
-      // Generate realistic recommendation reasons if user has profile preferences
-      if (pageNum === 1 && items.length > 0) {
-        computeRecommendations(items);
-      }
-    } catch (err) {
-      console.error('Failed to load opportunities:', err);
-      setError('Couldn’t load opportunities right now. Please check your connection and try again.');
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [debouncedQuery, category, location, remoteFilter, opportunityType, paidOnly, freshness, sortBy]);
-
-  // Trigger load on filter changes
-  useEffect(() => {
-    loadOpportunities(1, false);
-  }, [loadOpportunities]);
-
-  // Compute realistic recommendations based on actual user preferences
-  const computeRecommendations = (items) => {
-    if (!items || items.length === 0) {
-      setRecommendations([]);
-      return;
-    }
-
-    const recs = [];
-    const userLocation = userProfile?.city || userProfile?.location?.[0] || '';
-    const userSkills = userProfile?.skills || [];
-
-    for (const item of items) {
-      const reasons = [];
-
-      if (item.remote) {
-        reasons.push('Remote / Work from home friendly');
-      }
-      if (userLocation && item.location && item.location.toLowerCase().includes(userLocation.toLowerCase())) {
-        reasons.push(`Available in ${item.location}`);
-      }
-      if (item.category === 'Gig' || item.category === 'Part-time') {
-        reasons.push('Flexible schedule opportunity');
-      }
-      if (userSkills.length > 0 && item.requirements?.some(r => userSkills.some(s => r.toLowerCase().includes(s.toLowerCase())))) {
-        reasons.push('Matches your indicated skill profile');
-      }
-
-      if (reasons.length > 0) {
-        recs.push({ ...item, recReasons: reasons });
-      }
-      if (recs.length >= 3) break;
-    }
-
-    setRecommendations(recs);
+  // Time-based greeting (Section 22)
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning 👋';
+    if (hour < 17) return 'Good afternoon 👋';
+    return 'Good evening 👋';
   };
 
-  // Handle Refresh Button Click
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    setRefreshToast(null);
+  // 11 Core Sectors from Section 6
+  const POPULAR_CATEGORIES = [
+    { id: 'Delivery / Logistics', label: 'Delivery / Logistics', icon: '🛵', query: 'delivery work' },
+    { id: 'Hospitality', label: 'Hospitality & Catering', icon: '🍽️', query: 'catering hotel' },
+    { id: 'Technology', label: 'Software & Technology', icon: '💻', query: 'software developer' },
+    { id: 'Retail', label: 'Retail & Store Ops', icon: '🛍️', query: 'retail sales associate' },
+    { id: 'Customer Service', label: 'Customer Support & BPO', icon: '🎧', query: 'customer support' },
+    { id: 'Office', label: 'Back Office & Admin', icon: '📋', query: 'data entry office' },
+    { id: 'Healthcare', label: 'Healthcare & Clinic', icon: '🏥', query: 'medical assistant' },
+    { id: 'Education', label: 'Education & Tutoring', icon: '📚', query: 'tutor teacher' },
+    { id: 'Skilled Work', label: 'Skilled Trades & Tech', icon: '🔧', query: 'electrician technician' },
+    { id: 'Marketing', label: 'Marketing & Sales', icon: '📈', query: 'field sales marketing' },
+    { id: 'Finance', label: 'Finance & Accounts', icon: '💳', query: 'accounts assistant' }
+  ];
+
+  // Natural query suggestions from Section 1 & 7
+  const QUERY_EXAMPLES = [
+    'I want delivery work near me',
+    'Find software jobs for freshers',
+    'I need evening part-time work',
+    'Show catering jobs nearby',
+    'Find warehouse jobs nearby',
+    'I completed B.Tech and need a software job',
+    'Find jobs paying above ₹20,000'
+  ];
+
+  useEffect(() => {
+    // Load recently viewed from localStorage (Section 12)
     try {
-      const res = await refreshOpportunitiesFeedApi();
-      const freshCount = res.fresh || res.newOpportunities || 0;
-      if (freshCount > 0) {
-        setRefreshToast(`+${freshCount} fresh opportunities synced from public feeds!`);
-      } else {
-        setRefreshToast('All opportunities up to date. Feeds verified.');
-      }
-      await loadOpportunities(1, false);
+      const storedViewed = JSON.parse(localStorage.getItem('moneyway_recently_viewed') || '[]');
+      setRecentlyViewed(storedViewed.slice(0, 6));
     } catch {
-      setRefreshToast('Checked feeds. Displaying latest stored opportunities.');
-      await loadOpportunities(1, false);
-    } finally {
-      setRefreshing(false);
-      setTimeout(() => setRefreshToast(null), 4000);
+      setRecentlyViewed([]);
+    }
+
+    const loadDiscoveryData = async () => {
+      setLoading(true);
+      try {
+        const userLoc = userProfile?.city || userProfile?.location || (() => {
+          try {
+            return localStorage.getItem('moneyway_chosen_location') || '';
+          } catch {
+            return '';
+          }
+        })();
+        const [nearbyRes, recentRes, recRes, savedRes] = await Promise.all([
+          fetchNearbyJobsApi({ city: userLoc, limit: 4 }),
+          fetchRecentJobsApi({ limit: 4 }),
+          fetchRecommendedJobsApi({ profile: userProfile, limit: 4 }),
+          fetchSavedJobsApi()
+        ]);
+        setNearbyJobs(nearbyRes?.jobs || []);
+        setRecentJobs(recentRes?.jobs || []);
+        setRecommendedJobs(recRes?.jobs || []);
+        setSavedJobs(savedRes?.jobs || []);
+      } catch (err) {
+        console.error('Failed to load discover sections:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDiscoveryData();
+  }, [userProfile]);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchInput.trim() && onNavigateToTab) {
+      onNavigateToTab('search', null, searchInput.trim());
     }
   };
 
-  // Handle Load More
-  const handleLoadMore = () => {
-    if (loadingMore || !hasMore) return;
-    const nextPage = page + 1;
-    setPage(nextPage);
-    loadOpportunities(nextPage, true);
-  };
-
-  // Clear all filters
-  const handleClearFilters = () => {
-    setSearchQuery('');
-    setDebouncedQuery('');
-    setCategory('all');
-    setLocation('all');
-    setRemoteFilter('all');
-    setOpportunityType('all');
-    setPaidOnly(false);
-    setFreshness('any');
-    setSortBy('relevance');
-    setPage(1);
-  };
-
-  // Handle Geolocation Request
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser. Please select your city manually.');
-      return;
+  const handleSelectExampleQuery = (q) => {
+    if (onNavigateToTab) {
+      onNavigateToTab('search', null, q);
     }
-
-    setLocatingUser(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocatingUser(false);
-        // Find nearest city or default to Hyderabad / Bengaluru / Regional
-        setLocation('Hyderabad');
-      },
-      (error) => {
-        setLocatingUser(false);
-        alert('Location permission was denied. Please select your city from the location filter.');
-      },
-      { timeout: 8000 }
-    );
   };
-
-  // Calculate active filter count
-  const activeFiltersCount = [
-    category !== 'all',
-    location !== 'all',
-    remoteFilter !== 'all',
-    opportunityType !== 'all',
-    paidOnly,
-    freshness !== 'any',
-    sortBy !== 'relevance'
-  ].filter(Boolean).length;
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-8 animate-in fade-in duration-300 pb-16">
-      {/* 1. Header & Freshness Banner */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-800/80 pb-6">
-        <div className="space-y-1.5">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-950/60 border border-emerald-800/50 text-[11px] font-semibold text-emerald-400">
-            <Compass className="w-3.5 h-3.5 animate-pulse" />
-            <span>Live Opportunity Discovery</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span className="text-slate-400 font-normal">Real feeds · Verified links</span>
-          </div>
-
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white font-heading tracking-tight">
-            Discover Opportunities
+    <div className="space-y-10 max-w-7xl mx-auto pb-16">
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* 1. GREETING & NATURAL DISCOVERY SEARCH                        */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900/90 to-emerald-950/40 border border-slate-800 rounded-3xl p-6 sm:p-10 relative overflow-hidden shadow-2xl">
+        <div className="max-w-3xl space-y-4">
+          <span className="text-sm font-bold text-emerald-400 font-mono tracking-wider">
+            {getGreeting()}
+          </span>
+          <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+            What work are you looking for?
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
-            Explore verified gigs, part-time roles, remote jobs, and freelance projects. All listings are sourced from legitimate public feeds and direct partner platforms.
+          <p className="text-xs sm:text-sm text-slate-300">
+            Search in your own words. We extract genuine requirements, verify employer application portals, and eliminate duplicate listings.
           </p>
-        </div>
 
-        {/* Freshness & Refresh Control */}
-        <div className="flex items-center gap-3 shrink-0 self-start md:self-end">
-          <div className="text-right hidden sm:block">
-            <span className="block text-[11px] text-slate-400">
-              Last synced: <span className="text-slate-300 font-medium">{formatRelativeTime(lastUpdated)}</span>
-            </span>
-            <span className="block text-[10px] text-slate-500">
-              {availableSources.length} verified feeds active
-            </span>
+          {/* Search Box */}
+          <form onSubmit={handleSearchSubmit} className="pt-2">
+            <div className="relative flex items-center bg-slate-800/90 border border-slate-700 hover:border-emerald-500/80 focus-within:border-emerald-400 rounded-2xl p-1.5 shadow-xl transition-all">
+              <div className="pl-4 text-slate-400">
+                <Search className="w-5 h-5" />
+              </div>
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="e.g. I need part-time catering work near me, or software jobs for freshers..."
+                className="flex-1 bg-transparent border-none text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-0 px-3 py-2"
+              />
+              <button
+                type="submit"
+                className="px-5 py-2.5 rounded-xl bg-[#39E98A] text-slate-950 font-bold text-xs hover:bg-[#32d47c] transition-all flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer"
+              >
+                <span>Search</span>
+                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            </div>
+          </form>
+
+          {/* Natural search example chips */}
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            <span className="text-[11px] text-slate-500 font-semibold">Try:</span>
+            {QUERY_EXAMPLES.slice(0, 4).map((ex, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => handleSelectExampleQuery(ex)}
+                className="px-2.5 py-1 rounded-lg bg-slate-800/60 hover:bg-slate-700/80 border border-slate-700/60 text-[11px] text-slate-300 hover:text-white transition-colors cursor-pointer"
+              >
+                “{ex}”
+              </button>
+            ))}
           </div>
-
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-200 transition-all hover:border-slate-700 cursor-pointer disabled:opacity-50"
-            title="Fetch fresh opportunities from live feeds"
-          >
-            <RotateCw className={`w-3.5 h-3.5 text-emerald-400 ${refreshing ? 'animate-spin' : ''}`} />
-            <span>{refreshing ? 'Checking Feeds…' : 'Refresh'}</span>
-          </button>
         </div>
       </div>
 
-      {/* Refresh Toast Notification */}
-      {refreshToast && (
-        <div className="p-3 rounded-xl bg-emerald-950/70 border border-emerald-800/70 text-xs text-emerald-300 flex items-center justify-between shadow-lg animate-in fade-in duration-200">
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* 2. NEARBY JOBS SECTION (Section 8, 22)                         */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>{refreshToast}</span>
+            <MapPin className="w-5 h-5 text-emerald-400" />
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Nearby Jobs
+            </h2>
           </div>
-          <button onClick={() => setRefreshToast(null)} className="text-emerald-400 hover:text-white p-1">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* 2. Prominent Natural Search Bar */}
-      <div className="relative">
-        <div className="relative flex items-center">
-          <Search className="w-5 h-5 text-slate-400 absolute left-4 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder='Search e.g. "delivery jobs in Hyderabad", "remote web dev", "internships", "part time"...'
-            className="w-full pl-12 pr-28 py-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm text-white placeholder-slate-500 shadow-xl transition-all outline-none"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-12 text-slate-400 hover:text-white p-1 rounded-md"
-              title="Clear search"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
           <button
-            onClick={() => setShowFiltersModal(!showFiltersModal)}
-            className={`absolute right-3 p-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
-              activeFiltersCount > 0
-                ? 'bg-emerald-950 border-emerald-700 text-emerald-300'
-                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white'
-            }`}
+            onClick={() => onNavigateToTab && onNavigateToTab('nearby')}
+            className="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer"
           >
-            <SlidersHorizontal className="w-4 h-4" />
-            {activeFiltersCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-bold flex items-center justify-center">
-                {activeFiltersCount}
-              </span>
-            )}
+            <span>View all nearby &amp; map</span>
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
-        {debouncedQuery && loading && (
-          <div className="absolute -bottom-5 left-4 text-[11px] text-emerald-400 flex items-center gap-1.5">
-            <RotateCw className="w-3 h-3 animate-spin" />
-            <span>Searching opportunities…</span>
+        {nearbyJobs.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {nearbyJobs.map(job => (
+              <JobCard
+                key={job.id}
+                job={job}
+                onSelect={onSelectOpportunity}
+                onSave={onSaveJob}
+                isSaved={isSaved(job.id)}
+                onOpenExternalLink={onOpenExternalLink}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-slate-900/60 border border-slate-800 rounded-2xl text-xs text-slate-400">
+            No nearby jobs within immediate radius. <button onClick={() => onNavigateToTab && onNavigateToTab('nearby')} className="text-emerald-400 underline">Open Nearby Map</button>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* 3. Filter Quick-Chips Bar */}
-      <div className="space-y-3">
-        {/* Categories Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none text-xs">
-          <span className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
-            <Layers className="w-3 h-3" /> Category:
-          </span>
-          <button
-            onClick={() => setCategory('all')}
-            className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition-all ${
-              category === 'all'
-                ? 'bg-emerald-400 text-slate-950 font-bold shadow-sm'
-                : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            All Categories
-          </button>
-          {['Part-time', 'Remote', 'Freelance', 'Gig', 'Internship', 'Local service', 'Skill-Based'].map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition-all ${
-                category === cat
-                  ? 'bg-emerald-400 text-slate-950 font-bold shadow-sm'
-                  : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Location Quick Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none text-xs">
-          <span className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
-            <MapPin className="w-3 h-3" /> Location:
-          </span>
-          <button
-            onClick={() => { setLocation('all'); setRemoteFilter('all'); }}
-            className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition-all ${
-              location === 'all' && remoteFilter === 'all'
-                ? 'bg-slate-800 text-white font-bold border border-slate-700'
-                : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Any Location
-          </button>
-          <button
-            onClick={() => { setLocation('Remote'); setRemoteFilter('true'); }}
-            className={`px-3 py-1.5 rounded-xl font-medium shrink-0 flex items-center gap-1.5 transition-all ${
-              remoteFilter === 'true' || location === 'Remote'
-                ? 'bg-emerald-950 text-emerald-300 border border-emerald-700 font-bold'
-                : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Globe2 className="w-3 h-3 text-emerald-400" />
-            <span>Remote Only</span>
-          </button>
-          {['Hyderabad', 'Bengaluru', 'Chennai'].map((city) => (
-            <button
-              key={city}
-              onClick={() => { setLocation(city); setRemoteFilter('all'); }}
-              className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition-all ${
-                location === city
-                  ? 'bg-slate-800 text-white font-bold border border-slate-700'
-                  : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              {city}
-            </button>
-          ))}
-          <button
-            onClick={handleDetectLocation}
-            disabled={locatingUser}
-            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 shrink-0 flex items-center gap-1"
-            title="Use current location"
-          >
-            <Navigation className={`w-3 h-3 text-teal-400 ${locatingUser ? 'animate-spin' : ''}`} />
-            <span>{locatingUser ? 'Locating…' : 'Near Me'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 4. Active Filters Bar */}
-      {activeFiltersCount > 0 && (
-        <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 text-xs">
-          <span className="text-slate-400 text-[11px] font-medium mr-1">Active filters:</span>
-          {category !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800/60 text-[11px]">
-              Category: {category}
-              <X className="w-3 h-3 cursor-pointer hover:text-white" onClick={() => setCategory('all')} />
-            </span>
-          )}
-          {location !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800/60 text-[11px]">
-              Location: {location}
-              <X className="w-3 h-3 cursor-pointer hover:text-white" onClick={() => setLocation('all')} />
-            </span>
-          )}
-          {remoteFilter !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800/60 text-[11px]">
-              {remoteFilter === 'true' ? 'Remote Only' : 'On-Site Only'}
-              <X className="w-3 h-3 cursor-pointer hover:text-white" onClick={() => setRemoteFilter('all')} />
-            </span>
-          )}
-          {opportunityType !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 text-[11px]">
-              Type: {opportunityType}
-              <X className="w-3 h-3 cursor-pointer hover:text-white" onClick={() => setOpportunityType('all')} />
-            </span>
-          )}
-          {paidOnly && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 text-[11px]">
-              Paid Only
-              <X className="w-3 h-3 cursor-pointer hover:text-white" onClick={() => setPaidOnly(false)} />
-            </span>
-          )}
-          {freshness !== 'any' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 text-[11px]">
-              Fresh: {freshness}
-              <X className="w-3 h-3 cursor-pointer hover:text-white" onClick={() => setFreshness('any')} />
-            </span>
-          )}
-          {sortBy !== 'relevance' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 text-[11px]">
-              Sort: {sortBy}
-              <X className="w-3 h-3 cursor-pointer hover:text-white" onClick={() => setSortBy('relevance')} />
-            </span>
-          )}
-          <button
-            onClick={handleClearFilters}
-            className="text-[11px] text-rose-400 hover:text-rose-300 font-semibold ml-auto underline cursor-pointer"
-          >
-            Clear all filters
-          </button>
-        </div>
-      )}
-
-      {/* 5. Recommended For You Section (Optional / Collapsible) */}
-      {recommendations.length > 0 && !debouncedQuery && category === 'all' && (
-        <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900/60 to-teal-950/40 border border-emerald-800/40 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-bold text-white">
-              <Sparkles className="w-4 h-4 text-emerald-400" />
-              <span>Recommended For You</span>
-              <span className="text-[10px] font-normal text-slate-400">
-                (Matched against your preferences)
-              </span>
-            </div>
-            <button
-              onClick={() => setShowRecommendations(!showRecommendations)}
-              className="text-xs text-slate-400 hover:text-slate-200"
-            >
-              {showRecommendations ? 'Hide' : 'Show'}
-            </button>
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* 3. RECENTLY POSTED (Section 11, 22)                           */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-teal-400" />
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Recently Posted
+            </h2>
           </div>
-
-          {showRecommendations && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-              {recommendations.map((opp) => (
-                <div
-                  key={`rec-${opp.id}`}
-                  className="p-4 rounded-xl bg-slate-950/70 border border-emerald-900/40 flex flex-col justify-between space-y-3"
-                >
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800/60">
-                        {opp.category}
-                      </span>
-                      <span className="text-[10px] text-slate-400">{opp.location}</span>
-                    </div>
-                    <h4 className="text-xs font-bold text-white line-clamp-1">{opp.title}</h4>
-                    <p className="text-[11px] text-slate-300 font-medium">{opp.provider}</p>
-                    {opp.recReasons?.map((r, i) => (
-                      <span key={i} className="inline-block text-[10px] text-teal-300 bg-teal-950/60 px-2 py-0.5 rounded mr-1 mb-1">
-                        ✓ {r}
-                      </span>
-                    ))}
-                  </div>
-
-                  <a
-                    href={opp.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-1.5 px-3 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-[11px] font-bold flex items-center justify-center gap-1 transition-all"
-                  >
-                    <span>View Opportunity</span>
-                    <ArrowUpRight className="w-3 h-3" />
-                  </a>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 6. Results Header & Count */}
-      <div className="flex items-center justify-between text-xs text-slate-400 pt-2">
-        <div>
-          Showing <span className="text-white font-semibold">{opportunities.length}</span> of{' '}
-          <span className="text-white font-semibold">{totalCount}</span> verified opportunities
+          <span className="text-xs text-slate-400 font-mono">Prioritizing fresh postings</span>
         </div>
 
+        {recentJobs.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {recentJobs.map(job => (
+              <JobCard
+                key={job.id}
+                job={job}
+                onSelect={onSelectOpportunity}
+                onSave={onSaveJob}
+                isSaved={isSaved(job.id)}
+                onOpenExternalLink={onOpenExternalLink}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-slate-900/60 border border-slate-800 rounded-2xl text-xs text-slate-400">
+            Scanning latest feeds...
+          </div>
+        )}
+      </section>
+
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* 4. RECOMMENDED FOR YOU (Section 15, 22)                       */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-[#39E98A]" />
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Recommended For You
+            </h2>
+          </div>
+          <span className="text-xs text-slate-400 font-mono">Matched by measurable skills &amp; roles</span>
+        </div>
+
+        {recommendedJobs.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {recommendedJobs.map(job => (
+              <JobCard
+                key={job.id}
+                job={job}
+                onSelect={onSelectOpportunity}
+                onSave={onSaveJob}
+                isSaved={isSaved(job.id)}
+                onOpenExternalLink={onOpenExternalLink}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-slate-900/60 border border-slate-800 rounded-2xl text-xs text-slate-400">
+            Set your preferences in your Profile to unlock tailored matches.
+          </div>
+        )}
+      </section>
+
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* 5. POPULAR JOB CATEGORIES (Section 6, 22)                     */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      <section className="space-y-4">
         <div className="flex items-center gap-2">
-          <label className="text-[11px] text-slate-500">Sort by:</label>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 outline-none focus:border-emerald-500"
-          >
-            <option value="relevance">Relevance</option>
-            <option value="newest">Newest First</option>
-            <option value="compensation">Highest Compensation</option>
-          </select>
+          <Briefcase className="w-5 h-5 text-emerald-400" />
+          <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            Popular Job Categories
+          </h2>
         </div>
-      </div>
 
-      {/* 7. LOADING SKELETON STATE */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[1, 2, 3, 4, 5, 6].map((n) => (
-            <div
-              key={n}
-              className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4 animate-pulse"
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {POPULAR_CATEGORIES.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => onNavigateToTab && onNavigateToTab('search', null, cat.query)}
+              className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500/60 hover:bg-slate-850 text-left transition-all group cursor-pointer shadow-md flex flex-col justify-between h-28"
             >
-              <div className="flex items-center justify-between">
-                <div className="w-20 h-4 bg-slate-800 rounded-lg" />
-                <div className="w-16 h-4 bg-slate-800 rounded-lg" />
+              <span className="text-2xl">{cat.icon}</span>
+              <div>
+                <h4 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-1">
+                  {cat.label}
+                </h4>
+                <span className="text-[10px] text-slate-500">Explore openings →</span>
               </div>
-              <div className="w-3/4 h-5 bg-slate-800 rounded-lg" />
-              <div className="w-1/2 h-3.5 bg-slate-800 rounded-lg" />
-              <div className="w-full h-12 bg-slate-800/60 rounded-xl" />
-              <div className="pt-2 flex items-center gap-2">
-                <div className="flex-1 h-9 bg-slate-800 rounded-xl" />
-                <div className="w-9 h-9 bg-slate-800 rounded-xl" />
-              </div>
-            </div>
+            </button>
           ))}
         </div>
-      ) : error ? (
-        /* 8. ERROR STATE */
-        <div className="p-12 text-center bg-rose-950/20 border border-rose-900/40 rounded-2xl space-y-4 max-w-md mx-auto">
-          <AlertCircle className="w-10 h-10 text-rose-400 mx-auto" />
-          <h3 className="text-base font-bold text-white">Couldn’t load opportunities right now</h3>
-          <p className="text-xs text-slate-400 leading-relaxed">{error}</p>
-          <div className="pt-2 flex items-center justify-center gap-3">
-            <button
-              onClick={() => loadOpportunities(1, false)}
-              className="px-4 py-2 rounded-xl bg-emerald-400 text-slate-950 font-bold text-xs cursor-pointer hover:bg-emerald-300"
-            >
-              Retry
-            </button>
-            <button
-              onClick={handleClearFilters}
-              className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-semibold cursor-pointer hover:bg-slate-700"
-            >
-              Clear filters
-            </button>
-          </div>
-        </div>
-      ) : opportunities.length === 0 ? (
-        /* 9. TRUTHFUL EMPTY STATE */
-        <div className="p-12 text-center bg-slate-900/60 border border-slate-800 rounded-2xl space-y-4 max-w-lg mx-auto">
-          <Compass className="w-10 h-10 text-slate-600 mx-auto" />
-          <h3 className="text-base font-bold text-white">No opportunities found for your search</h3>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            We couldn't find matching opportunities for your current filters. To see more options, try:
-          </p>
-          <ul className="text-xs text-slate-400 space-y-1 list-disc list-inside max-w-xs mx-auto text-left">
-            <li>Selecting a broader location or choosing "Remote Only"</li>
-            <li>Switching to "All Categories"</li>
-            <li>Clearing specific compensation or keyword constraints</li>
-          </ul>
-          <div className="pt-4 flex items-center justify-center gap-3">
-            <button
-              onClick={handleClearFilters}
-              className="px-4 py-2 rounded-xl bg-emerald-400 text-slate-950 font-bold text-xs cursor-pointer hover:bg-emerald-300"
-            >
-              Clear all filters
-            </button>
-            <button
-              onClick={handleRefresh}
-              className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-semibold cursor-pointer hover:bg-slate-700"
-            >
-              Refresh feeds
-            </button>
-          </div>
-        </div>
-      ) : (
-        /* 10. REAL DATA OPPORTUNITY CARDS GRID */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {opportunities.map((opp) => {
-            const isSaved = savedIds.includes(opp.id);
-            const compLabel = opp.compensation?.label || 'Pay not provided';
-            const locationLabel = opp.location || 'Location not provided';
+      </section>
 
-            return (
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* 6. RECENTLY VIEWED (Section 12, 22)                           */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      {recentlyViewed.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-white tracking-tight">
+              Recently Viewed
+            </h2>
+            <span className="text-xs text-slate-500 font-mono">Your navigation history</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {recentlyViewed.map(item => (
               <div
-                key={opp.id}
-                className="group relative flex flex-col justify-between p-5 rounded-2xl bg-[#0b1320] border border-slate-800 hover:border-slate-700 shadow-xl hover:shadow-2xl transition-all duration-200"
+                key={item.id}
+                onClick={() => onSelectOpportunity && onSelectOpportunity(item)}
+                className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-left cursor-pointer transition-all hover:bg-slate-850 space-y-1"
               >
-                {/* Card Top: Badges & Provider */}
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-emerald-950/80 border border-emerald-800/60 text-emerald-300">
-                      {opp.category}
-                    </span>
-
-                    {/* Verification Status */}
-                    {opp.verified ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-800/50">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                        <span>Source verified</span>
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-medium text-slate-400 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800 truncate max-w-[130px]">
-                        {opp.source}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Title & Company */}
-                  <div>
-                    <h3 className="text-base font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-2">
-                      {opp.title}
-                    </h3>
-                    <p className="text-xs text-slate-300 font-medium mt-1">{opp.provider}</p>
-                  </div>
-
-                  {/* Key Metadata Row */}
-                  <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
-                    <div className="flex items-center gap-1.5 text-slate-300 truncate">
-                      <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      <span className="truncate">{locationLabel}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-slate-300 truncate">
-                      <Briefcase className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      <span className="truncate">{opp.type || 'Opportunity'}</span>
-                    </div>
-
-                    <div className="col-span-2 flex items-center gap-1.5 text-emerald-300 font-semibold truncate pt-0.5">
-                      <Coins className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span className="truncate">{compLabel}</span>
-                    </div>
-                  </div>
-
-                  {/* Requirements / Tags */}
-                  {opp.requirements && opp.requirements.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {opp.requirements.slice(0, 3).map((req, i) => (
-                        <span
-                          key={i}
-                          className="text-[10px] text-slate-400 bg-slate-900/90 px-2 py-0.5 rounded-md border border-slate-800 truncate max-w-[140px]"
-                        >
-                          {req}
-                        </span>
-                      ))}
-                      {opp.requirements.length > 3 && (
-                        <span className="text-[10px] text-slate-500 self-center">
-                          +{opp.requirements.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Description snippet */}
-                  <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed pt-1">
-                    {opp.description}
-                  </p>
-                </div>
-
-                {/* Card Footer: Actions */}
-                <div className="pt-5 mt-4 border-t border-slate-800/80 flex items-center gap-2.5">
-                  <a
-                    href={opp.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-                  >
-                    <span>View Opportunity</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-
-                  <button
-                    onClick={() => {
-                      if (!isAuthenticated) {
-                        openAuthModal('login');
-                      } else {
-                        toggleSaveOpportunity(opp.id);
-                      }
-                    }}
-                    className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-                      isSaved
-                        ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
-                        : 'bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white border-slate-800'
-                    }`}
-                    title={isSaved ? 'Remove from Saved' : 'Save Opportunity'}
-                  >
-                    <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-emerald-400 text-emerald-400' : ''}`} />
-                  </button>
-                </div>
+                <span className="text-[10px] font-bold text-emerald-400 uppercase truncate block">
+                  {item.sector || 'Opportunity'}
+                </span>
+                <h4 className="text-xs font-bold text-white truncate">{item.title}</h4>
+                <p className="text-[11px] text-slate-400 truncate">{item.company}</p>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        </section>
       )}
 
-      {/* 11. Pagination / Load More Button */}
-      {!loading && !error && hasMore && (
-        <div className="pt-6 text-center">
-          <button
-            onClick={handleLoadMore}
-            disabled={loadingMore}
-            className="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-xs font-bold text-slate-200 inline-flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-          >
-            {loadingMore ? (
-              <>
-                <RotateCw className="w-4 h-4 animate-spin text-emerald-400" />
-                <span>Loading more opportunities…</span>
-              </>
-            ) : (
-              <>
-                <span>Load More Opportunities ({totalCount - opportunities.length} remaining)</span>
-                <ChevronDown className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </div>
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* 7. SAVED JOBS SHORTCUT (Section 13, 22)                       */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      {savedJobs.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bookmark className="w-5 h-5 text-amber-400" />
+              <h2 className="text-xl font-bold text-white tracking-tight">
+                Saved Jobs ({savedJobs.length})
+              </h2>
+            </div>
+            <button
+              onClick={() => onNavigateToTab && onNavigateToTab('saved')}
+              className="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 cursor-pointer"
+            >
+              <span>View all saved</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {savedJobs.slice(0, 4).map(job => (
+              <JobCard
+                key={job.id}
+                job={job}
+                onSelect={onSelectOpportunity}
+                onSave={onSaveJob}
+                isSaved={true}
+                onOpenExternalLink={onOpenExternalLink}
+              />
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );

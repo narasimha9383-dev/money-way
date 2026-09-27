@@ -409,3 +409,127 @@ export async function adminDeleteOpportunity(id) {
     method: 'DELETE'
   });
 }
+
+/* ==========================================================================
+   CANONICAL WORK DISCOVERY & REAL JOB APIS (Sections 1, 8, 10, 14, 24, 25)
+   ========================================================================== */
+
+export async function searchJobsApi(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, val]) => {
+    if (val !== undefined && val !== null && val !== '') {
+      if (typeof val === 'object') {
+        query.append(key, JSON.stringify(val));
+      } else {
+        query.append(key, String(val));
+      }
+    }
+  });
+  return await apiFetch(`/jobs/search?${query.toString()}`);
+}
+
+export async function fetchNearbyJobsApi(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, val]) => {
+    if (val !== undefined && val !== null && val !== '') {
+      query.append(key, String(val));
+    }
+  });
+  return await apiFetch(`/jobs/nearby?${query.toString()}`);
+}
+
+export async function fetchRecentJobsApi(params = {}) {
+  const query = new URLSearchParams();
+  if (params.limit) query.append('limit', String(params.limit));
+  return await apiFetch(`/jobs/recent?${query.toString()}`);
+}
+
+export async function fetchRecommendedJobsApi(params = {}) {
+  const query = new URLSearchParams();
+  if (params.limit) query.append('limit', String(params.limit));
+  if (params.profile) query.append('profile', JSON.stringify(params.profile));
+  return await apiFetch(`/jobs/recommended?${query.toString()}`);
+}
+
+export async function fetchJobDetailApi(id) {
+  return await apiFetch(`/jobs/${id}`);
+}
+
+export async function saveJobApi(id) {
+  return await apiFetch(`/jobs/${id}/save`, { method: 'POST' });
+}
+
+export async function unsaveJobApi(id) {
+  return await apiFetch(`/jobs/${id}/save`, { method: 'DELETE' });
+}
+
+export async function fetchSavedJobsApi() {
+  return await apiFetch('/jobs/saved');
+}
+
+export async function fetchAlertsApi() {
+  return await apiFetch('/alerts');
+}
+
+export async function createAlertApi(data) {
+  return await apiFetch('/alerts', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export async function deleteAlertApi(id) {
+  return await apiFetch(`/alerts/${id}`, {
+    method: 'DELETE'
+  });
+}
+
+export async function fetchNotificationsApi(params = {}) {
+  const query = new URLSearchParams();
+  if (params.unreadOnly) query.append('unread', 'true');
+  return await apiFetch(`/notifications?${query.toString()}`);
+}
+
+export async function markNotificationReadApi(id) {
+  return await apiFetch(`/notifications/${id}/read`, {
+    method: 'PATCH'
+  });
+}
+
+export async function markAllNotificationsReadApi() {
+  return await apiFetch('/notifications/read-all', {
+    method: 'POST'
+  });
+}
+
+export function getNotificationStreamUrl() {
+  const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  return `${base}/notifications/stream`;
+}
+
+export async function triggerTestNotificationApi(data = {}) {
+  return await apiFetch('/notifications/test', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export async function geocodeLocationApi(query) {
+  const params = new URLSearchParams({ q: query });
+  return await apiFetch(`/jobs/geocode?${params.toString()}`);
+}
+
+export async function reverseGeocodeApi(lat, lng) {
+  const params = new URLSearchParams({ lat: String(lat), lng: String(lng) });
+  return await apiFetch(`/jobs/reverse-geocode?${params.toString()}`);
+}
+
+export async function fetchOrganizationDetailsApi(query) {
+  const params = new URLSearchParams({ q: query });
+  return await apiFetch(`/jobs/organization/details?${params.toString()}`);
+}
+
+export async function fetchOrganizationsListApi() {
+  return await apiFetch('/jobs/organizations');
+}
+

@@ -29,7 +29,9 @@ import {
   LayoutDashboard
 } from 'lucide-react';
 import { useAuth } from '../AuthContext.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { userAvatarImage } from '../services/imageMap.js';
+import NotificationTray from './NotificationTray.jsx';
 
 export default function HeaderBar({ 
   currentTab = 'home',
@@ -37,33 +39,15 @@ export default function HeaderBar({
   savedCount = 0,
   compareCount = 0,
   onOpenQuestionnaire,
-  onNavigateToTab 
+  onNavigateToTab,
+  onSelectJob
 }) {
   const { user, isAuthenticated, isAdmin, logout, openAuthModal, savedIds } = useAuth();
-  const [showNotifications, setShowNotifications] = useState(false);
+  const { theme, isDark, toggleTheme } = useTheme();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [drawerRecsExpanded, setDrawerRecsExpanded] = useState(true);
-  const [darkMode, setDarkMode] = useState(true);
   const userMenuRef = useRef(null);
-  const notifRef = useRef(null);
-
-  const notifications = [
-    {
-      id: 1,
-      title: 'Database Verification Audit',
-      time: 'September 2026',
-      desc: 'All 21 realistic opportunities and platforms verified against official source benchmarks.',
-      type: 'verified'
-    },
-    {
-      id: 2,
-      title: 'Zero Fake Information Guard',
-      time: 'Active',
-      desc: 'Platform fees, URLs, and eligibility rules strictly backed by stored source citations.',
-      type: 'shield'
-    }
-  ];
 
   const subItems = [
     { id: 'generator', label: 'Generator', icon: Bot },
@@ -79,9 +63,6 @@ export default function HeaderBar({
     const handleClickOutside = (e) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
         setShowUserMenu(false);
-      }
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
-        setShowNotifications(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -141,71 +122,30 @@ export default function HeaderBar({
 
           {/* Right Tools: Theme, Notifications, User Profile / Auth Actions */}
           <div className="flex items-center gap-2 sm:gap-3.5">
-            {/* Dark / Light Mode Toggle */}
+            {/* Dark / Bright Mode Toggle */}
             <button 
               type="button"
-              onClick={() => setDarkMode(!darkMode)}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 flex items-center justify-center transition-colors cursor-pointer"
-              title="Toggle theme"
-              aria-label="Toggle theme"
+              onClick={toggleTheme}
+              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
+                isDark 
+                  ? 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700' 
+                  : 'bg-amber-50 border-amber-300 text-amber-600 hover:text-amber-800 hover:bg-amber-100 shadow-sm'
+              }`}
+              title={isDark ? "Switch to Bright Mode" : "Switch to Dark Mode"}
+              aria-label={isDark ? "Switch to Bright Mode" : "Switch to Dark Mode"}
             >
-              {darkMode ? <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />}
+              {isDark ? (
+                <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+              ) : (
+                <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
+              )}
             </button>
 
-            {/* Notifications Bell */}
-            <div className="relative" ref={notifRef}>
-              <button 
-                type="button"
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 flex items-center justify-center transition-colors relative cursor-pointer"
-                title="Verified System Notifications"
-                aria-label="Notifications"
-              >
-                <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#0b1320]" />
-              </button>
-
-              {/* Notification Dropdown Modal */}
-              {showNotifications && (
-                <div className="absolute right-0 sm:right-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-96 max-w-[380px] rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl p-4 z-50 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">System &amp; Verification Alerts</span>
-                    </div>
-                    <button 
-                      onClick={() => setShowNotifications(false)}
-                      className="text-slate-400 hover:text-slate-200 text-xs p-1"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div className="mt-3 space-y-3">
-                    {notifications.map(n => (
-                      <div key={n.id} className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-left space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                            {n.title}
-                          </span>
-                          <span className="text-[10px] text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800/60 font-medium">
-                            {n.time}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 leading-relaxed">{n.desc}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-3 pt-2 border-t border-slate-800/80 text-center">
-                    <span className="text-[10px] text-slate-500">
-                      Zero fake updates · Direct verified source checks only
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Realtime Live Notifications Tray */}
+            <NotificationTray 
+              onSelectJob={onSelectJob} 
+              onNavigateToTab={onNavigateToTab} 
+            />
 
             {/* DYNAMIC AUTH / USER PROFILE MENU */}
             {isAuthenticated ? (
@@ -350,13 +290,24 @@ export default function HeaderBar({
                 >
                   <MoneyWayLogo size="sm" showSubtitle={false} />
                 </div>
-                <button
-                  onClick={() => setMobileDrawerOpen(false)}
-                  className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
-                  aria-label="Close Navigation"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+                    title={isDark ? "Switch to Bright Mode" : "Switch to Dark Mode"}
+                  >
+                    {isDark ? <Moon className="w-4 h-4 text-emerald-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
+                    <span>{isDark ? 'Dark' : 'Bright'}</span>
+                  </button>
+                  <button
+                    onClick={() => setMobileDrawerOpen(false)}
+                    className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+                    aria-label="Close Navigation"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Navigation Links */}

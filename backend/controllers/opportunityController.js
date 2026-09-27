@@ -347,32 +347,11 @@ export function getRecommendationsQuery(req, res) {
 
 /**
  * 5. GET /api/opportunities/nearby
- * Nearby Opportunities & Services
+ * Dynamic Real Jobs & Local Work Opportunities (Zero hardcoded data)
  */
-export function getNearby(req, res) {
-  const { lat, lng, city, area, radiusKm, category, profile, limit } = req.query;
-
-  let parsedProfile = null;
-  if (profile) {
-    try {
-      parsedProfile = typeof profile === 'string' ? JSON.parse(profile) : profile;
-    } catch {
-      // ignore
-    }
-  }
-
-  const result = searchNearbyServices({
-    lat: lat ? Number(lat) : undefined,
-    lng: lng ? Number(lng) : undefined,
-    city,
-    area,
-    radiusKm: radiusKm ? Number(radiusKm) : 50,
-    category,
-    profile: parsedProfile,
-    limit: limit ? Number(limit) : 20
-  });
-
-  res.json(result);
+export async function getNearby(req, res) {
+  const { getNearbyJobs } = await import('./jobController.js');
+  return getNearbyJobs(req, res);
 }
 
 /**

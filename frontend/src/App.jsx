@@ -3,11 +3,12 @@ import React, { useState, useEffect } from 'react';
 import HeaderBar from './components/HeaderBar.jsx';
 import LeftSidebar from './components/LeftSidebar.jsx';
 import RightSidebar from './components/RightSidebar.jsx';
-import DashboardHome from './components/DashboardHome.jsx';
 import SmartQuestionnaire from './components/SmartQuestionnaire.jsx';
 import PersonalizedResults from './components/PersonalizedResults.jsx';
 import OpportunityDetailModal from './components/OpportunityDetailModal.jsx';
 import SearchOpportunitiesPage from './components/SearchOpportunitiesPage.jsx';
+import NearbyJobsPage from './components/NearbyJobsPage.jsx';
+import JobAlertsPage from './components/JobAlertsPage.jsx';
 import OpportunityComparison from './components/OpportunityComparison.jsx';
 import ActionPlanTracker from './components/ActionPlanTracker.jsx';
 import ScamCenter from './components/ScamCenter.jsx';
@@ -16,11 +17,13 @@ import PersonalDashboard from './components/PersonalDashboard.jsx';
 import AdminDashboard from './components/AdminDashboard.jsx';
 import LinkSafetyModal from './components/LinkSafetyModal.jsx';
 import PremiumHomePage from './components/PremiumHomePage.jsx';
-import DiscoverOpportunitiesPage from './components/DiscoverOpportunitiesPage.jsx';
+import DetailsOfOrganizationPage from './components/DetailsOfOrganizationPage.jsx';
 import MoneyRecommendationHub from './components/MoneyRecommendationHub.jsx';
 import AuthModal from './components/AuthModal.jsx';
+import RealtimeNotificationToast from './components/RealtimeNotificationToast.jsx';
 import ProtectedRoute from './ProtectedRoute.jsx';
 import { useAuth } from './AuthContext.jsx';
+import { useTheme } from './context/ThemeContext.jsx';
 
 import {
   fetchOpportunities,
@@ -31,7 +34,8 @@ import {
   aiDiscoverOpportunities,
   reportNotInterested,
   undoNotInterested,
-  sendFeedback
+  sendFeedback,
+  fetchJobDetailApi
 } from './services/api.js';
 
 import {
@@ -46,10 +50,14 @@ import {
   X,
   Loader2,
   Sparkles,
-  ShieldAlert
+  ShieldAlert,
+  MapPin,
+  Bell,
+  Building2
 } from 'lucide-react';
 
 export default function App() {
+  const { theme, isDark } = useTheme();
   const {
     user,
     loading: authLoading,
@@ -65,22 +73,56 @@ export default function App() {
     try {
       const parts = window.location.pathname.replace(/^\/+/, '').split('/').filter(Boolean);
       const first = (parts[0] || '').toLowerCase();
-      const second = (parts[1] || '').toLowerCase();
+      const second = parts[1] || '';
       const validSubTabs = ['generator', 'analyzer', 'matcher', 'mapper', 'assistant', 'compare'];
 
+      // Nearby route aliases (Jobs Near You / Jobs Near Me / Nearby)
+      if (
+        first === 'jobs-near-you' ||
+        first === 'jobsnearyou' ||
+        first === 'jobs-near-me' ||
+        first === 'jobsnearme' ||
+        first === 'nearby-jobs' ||
+        first === 'nearby' ||
+        (first === 'jobs' && (second === 'nearby' || second === 'near-you' || second === 'near-me'))
+      ) {
+        return { tab: 'nearby', subTab: 'generator' };
+      }
+
+      // Search route aliases (/search, /find-jobs, /jobs/search)
+      if (
+        first === 'search' ||
+        first === 'find-jobs' ||
+        first === 'findjobs' ||
+        (first === 'jobs' && (second === 'search' || second === 'find'))
+      ) {
+        return { tab: 'search', subTab: 'generator' };
+      }
+
+      if (first === 'jobs' && second) {
+        return { tab: 'discover', subTab: 'generator', initialJobId: decodeURIComponent(second) };
+      }
+
       if (first === 'recommendations' || first === 'money-recommendation') {
-        const sub = validSubTabs.includes(second) ? second : 'generator';
+        const sub = validSubTabs.includes(second.toLowerCase()) ? second.toLowerCase() : 'generator';
         return { tab: 'recommendations', subTab: sub };
       }
       if (validSubTabs.includes(first)) {
         return { tab: 'recommendations', subTab: first };
       }
 
+      if (first === 'detailsoforganization' || first === 'details-of-organization' || first === 'organization' || first === 'organizations') {
+        return { tab: 'detailsOfOrganization', subTab: 'generator' };
+      }
+
       const validTabs = [
         'home',
         'discover',
+        'detailsOfOrganization',
         'search',
+        'nearby',
         'saved',
+        'alerts',
         'compare',
         'plans',
         'scam-center',
@@ -103,7 +145,7 @@ export default function App() {
     try {
       if (typeof window !== 'undefined' && window.location.search) {
         const params = new URLSearchParams(window.location.search);
-        return params.get('q') || '';
+        return params.get('q') || params.get('query') || '';
       }
     } catch {}
     return '';
@@ -113,6 +155,19 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState(initialRoute.tab);
   const [recommendationSubTab, setRecommendationSubTab] = useState(initialRoute.subTab);
   const [searchQuery, setSearchQuery] = useState(getInitialSearchQuery);
+
+  // If initial route points to /jobs/:id, load the job on mount
+  useEffect(() => {
+    if (initialRoute.initialJobId) {
+      fetchJobDetailApi(initialRoute.initialJobId)
+        .then(res => {
+          if (res && res.job) {
+            setSelectedOpportunityForDetail(res.job);
+          }
+        })
+        .catch(err => console.error('Failed to load initial job:', err));
+    }
+  }, []);
 
   const handleNavigateTab = (tab, subTab, query) => {
     setShowQuestionnaire(false);
@@ -165,7 +220,7 @@ export default function App() {
       setRecommendationSubTab(route.subTab);
       try {
         const params = new URLSearchParams(window.location.search);
-        setSearchQuery(params.get('q') || '');
+        setSearchQuery(params.get('q') || params.get('query') || '');
       } catch {
         // ignore
       }
@@ -593,7 +648,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080A0C] text-[#F5F7F5] flex flex-col font-sans selection:bg-[#39E98A] selection:text-[#080A0C]">
+    <div className={`min-h-screen ${isDark ? 'bg-[#080A0C] text-[#F5F7F5]' : 'bg-[#F8FAFC] text-[#0F172A]'} flex flex-col font-sans selection:bg-[#39E98A] selection:text-[#080A0C] transition-colors duration-200`}>
       {currentTab === 'home' && !showQuestionnaire ? (
         <PremiumHomePage
           userProfile={userProfile}
@@ -620,6 +675,7 @@ export default function App() {
             compareCount={compareList.length}
             onOpenQuestionnaire={() => setShowQuestionnaire(true)}
             onNavigateToTab={handleNavigateTab}
+            onSelectJob={(job) => setSelectedOpportunityForDetail(job)}
           />
 
           {/* 2. Main Layout with Responsive Multi-Column Structure */}
@@ -646,48 +702,29 @@ export default function App() {
                 </div>
               ) : (
                 <>
-                  {/* Dashboard Tab */}
-                  {currentTab === 'dashboard' && (
-                    <DashboardHome
+                  {/* Personal Dashboard & Profile Tab */}
+                  {(currentTab === 'dashboard' || currentTab === 'profile') && (
+                    <PersonalDashboard
                       userProfile={userProfile}
-                      recommendations={recommendations}
+                      savedIds={savedIds}
+                      rejectedIds={rejectedIds}
                       allOpportunities={allOpportunities}
-                      onSelectOpportunity={(opp) => setSelectedOpportunityForDetail(opp)}
-                      onSaveOpportunity={handleSaveOpportunity}
-                      isSaved={(id) => savedIds.includes(id)}
-                      onNavigateToTab={handleNavigateTab}
                       onOpenQuestionnaire={() => setShowQuestionnaire(true)}
-                      onSearchSubmit={handleExecuteSearch}
-                      searchLoading={searchLoading}
-                      searchQuery={searchQuery}
-                      searchResults={searchResults}
-                      searchCount={searchCount}
-                      searchError={searchError}
-                      searchFilters={searchFilters}
-                      onFilterChange={handleFilterChange}
-                      onClearSearch={handleClearSearch}
-                      onDiscoverMore={handleDiscoverMore}
-                      discoverLoading={discoverLoading}
-                      onRefreshOpportunities={handleRefreshOpportunities}
-                      refreshLoading={refreshLoading}
-                      onAIDiscover={handleAIDiscover}
-                      aiDiscoverLoading={aiDiscoverLoading}
-                      onAddToCompare={handleAddToCompare}
-                      isCompared={(id) => compareList.some(item => item.id === id)}
-                      onStartPlan={handleStartPlan}
-                      onNotInterested={handleNotInterested}
-                      onOpenExternalLink={openExternalLink}
-                      didYouMean={didYouMean}
-                      parsedSearchFilters={parsedSearchFilters}
+                      onSelectOpportunity={(opp) => setSelectedOpportunityForDetail(opp)}
+                      onRemoveSaved={handleSaveOpportunity}
+                      onNavigateToTab={handleNavigateTab}
                     />
                   )}
 
-                  {/* Discover Opportunities: Full Real Data Discovery View */}
-                  {currentTab === 'discover' && (
-                    <DiscoverOpportunitiesPage
+                  {/* Details of Organization / Discover: Organization Explorer & Verified Intelligence */}
+                  {(currentTab === 'discover' || currentTab === 'detailsOfOrganization') && (
+                    <DetailsOfOrganizationPage
                       userProfile={userProfile}
                       onSelectOpportunity={(opp) => setSelectedOpportunityForDetail(opp)}
-                      onOpenQuestionnaire={() => setShowQuestionnaire(true)}
+                      onOpenExternalLink={openExternalLink}
+                      onNavigateToTab={handleNavigateTab}
+                      isSaved={(id) => savedIds.includes(id)}
+                      onSaveJob={handleSaveOpportunity}
                     />
                   )}
 
@@ -748,7 +785,25 @@ export default function App() {
                     <SearchOpportunitiesPage
                       userProfile={userProfile}
                       onSelectOpportunity={(opp) => setSelectedOpportunityForDetail(opp)}
+                      onNavigateToTab={handleNavigateTab}
                       initialQuery={searchQuery}
+                    />
+                  )}
+
+                  {/* Real-Data Nearby Jobs with Map and Distance Badges */}
+                  {currentTab === 'nearby' && (
+                    <NearbyJobsPage
+                      userProfile={userProfile}
+                      onSelectJob={(job) => setSelectedOpportunityForDetail(job)}
+                    />
+                  )}
+
+                  {/* Real-Time Job Alerts & Notification Center */}
+                  {currentTab === 'alerts' && (
+                    <JobAlertsPage
+                      userProfile={userProfile}
+                      onSelectJob={(job) => setSelectedOpportunityForDetail(job)}
+                      onNavigateToTab={handleNavigateTab}
                     />
                   )}
 
@@ -801,22 +856,6 @@ export default function App() {
                       onOpenQuestionnaire={() => setShowQuestionnaire(true)}
                       onOpenExternalLink={openExternalLink}
                     />
-                  )}
-
-                  {/* Personal Dashboard */}
-                  {currentTab === 'profile' && (
-                    <ProtectedRoute title="Personal Profile & Dashboard" message="Sign in to view your personalized profile, constraints, and recommendations.">
-                      <PersonalDashboard
-                        userProfile={userProfile}
-                        savedIds={savedIds}
-                        rejectedIds={rejectedIds}
-                        allOpportunities={allOpportunities}
-                        onOpenQuestionnaire={() => setShowQuestionnaire(true)}
-                        onSelectOpportunity={(opp) => setSelectedOpportunityForDetail(opp)}
-                        onRemoveSaved={handleSaveOpportunity}
-                        onNavigateToTab={handleNavigateTab}
-                      />
-                    </ProtectedRoute>
                   )}
 
                   {/* Admin Dashboard */}
@@ -908,6 +947,13 @@ export default function App() {
             <span>Home</span>
           </button>
           <button
+            onClick={() => handleNavigateTab('detailsOfOrganization')}
+            className={`flex flex-col items-center gap-1 p-1 transition-colors ${currentTab === 'discover' || currentTab === 'detailsOfOrganization' ? 'text-[#39E98A] font-bold' : 'hover:text-white'}`}
+          >
+            <Building2 className="w-4 h-4" />
+            <span>Organizations</span>
+          </button>
+          <button
             onClick={() => handleNavigateTab('search')}
             className={`flex flex-col items-center gap-1 p-1 transition-colors ${currentTab === 'search' ? 'text-[#39E98A] font-bold' : 'hover:text-white'}`}
           >
@@ -915,25 +961,25 @@ export default function App() {
             <span>Search</span>
           </button>
           <button
-            onClick={() => handleNavigateTab('recommendations', 'generator')}
-            className={`flex flex-col items-center gap-1 p-1 transition-colors ${currentTab === 'recommendations' || currentTab === 'money-recommendation' ? 'text-[#39E98A] font-bold' : 'hover:text-white'}`}
+            onClick={() => handleNavigateTab('nearby')}
+            className={`flex flex-col items-center gap-1 p-1 transition-colors ${currentTab === 'nearby' ? 'text-[#39E98A] font-bold' : 'hover:text-white'}`}
           >
-            <Sparkles className="w-4 h-4 text-[#39E98A]" />
-            <span>AI Hub</span>
+            <MapPin className="w-4 h-4" />
+            <span>Nearby</span>
           </button>
           <button
-            onClick={() => handleNavigateTab('discover')}
-            className={`flex flex-col items-center gap-1 p-1 transition-colors ${currentTab === 'discover' ? 'text-[#39E98A] font-bold' : 'hover:text-white'}`}
+            onClick={() => handleNavigateTab('alerts')}
+            className={`flex flex-col items-center gap-1 p-1 transition-colors ${currentTab === 'alerts' ? 'text-[#39E98A] font-bold' : 'hover:text-white'}`}
           >
-            <Compass className="w-4 h-4" />
-            <span>Discover</span>
+            <Bell className="w-4 h-4" />
+            <span>Alerts</span>
           </button>
           <button
-            onClick={() => handleNavigateTab('plans')}
-            className={`flex flex-col items-center gap-1 p-1 transition-colors ${currentTab === 'plans' ? 'text-[#39E98A] font-bold' : 'hover:text-white'}`}
+            onClick={() => handleNavigateTab('saved')}
+            className={`flex flex-col items-center gap-1 p-1 transition-colors ${currentTab === 'saved' ? 'text-[#39E98A] font-bold' : 'hover:text-white'}`}
           >
-            <CheckSquare className="w-4 h-4" />
-            <span>Plans</span>
+            <Bookmark className="w-4 h-4" />
+            <span>Saved</span>
           </button>
           <button
             onClick={() => handleNavigateTab('profile')}
@@ -947,6 +993,9 @@ export default function App() {
 
       {/* Global Authentication Modal (Login / Signup / Account Linking) */}
       <AuthModal />
+
+      {/* Global Realtime Notification Toast */}
+      <RealtimeNotificationToast onSelectJob={(job) => setSelectedOpportunityForDetail(job)} />
     </div>
   );
 }

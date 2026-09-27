@@ -27,8 +27,10 @@ import {
 import { getOpportunityImage } from '../services/imageMap.js';
 import { chatAdvisor, searchOpportunities } from '../services/api.js';
 import CinematicBackground from './CinematicBackground.jsx';
+import NotificationTray from './NotificationTray.jsx';
 import { useAuth } from '../AuthContext.jsx';
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext.jsx';
+import { LogOut, User as UserIcon, Moon, Sun } from 'lucide-react';
 
 export default function PremiumHomePage({
   userProfile,
@@ -43,6 +45,7 @@ export default function PremiumHomePage({
   onOpenExternalLink
 }) {
   const { user, isAuthenticated, isAdmin, logout, openAuthModal } = useAuth();
+  const { theme, isDark, toggleTheme } = useTheme();
 
   // Navigation scroll state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -228,32 +231,44 @@ export default function PremiumHomePage({
           <div className="hidden md:flex items-center gap-1.5 text-xs font-medium text-stone-300">
             <button 
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="px-3.5 py-1.5 rounded-lg text-[#39E98A] hover:bg-white/[0.04] transition-colors font-semibold cursor-pointer"
+              className="px-3 py-1.5 rounded-lg text-[#39E98A] hover:bg-white/[0.04] transition-colors font-semibold cursor-pointer"
             >
               Home
             </button>
             <button 
+              onClick={() => onNavigateToTab ? onNavigateToTab('discover') : scrollTo('discover')}
+              className="px-3 py-1.5 rounded-lg hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
+            >
+              Discover
+            </button>
+            <button 
               onClick={() => onNavigateToTab ? onNavigateToTab('search') : scrollTo('recommended')}
-              className="px-3.5 py-1.5 rounded-lg hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-lg hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
             >
               Search
             </button>
             <button 
-              onClick={() => onNavigateToTab ? onNavigateToTab('recommendations') : scrollTo('discover')}
-              className="px-3.5 py-1.5 rounded-lg hover:text-white hover:bg-white/[0.04] transition-colors flex items-center gap-1.5 cursor-pointer"
+              onClick={() => onNavigateToTab ? onNavigateToTab('nearby') : null}
+              className="px-3 py-1.5 rounded-lg hover:text-[#39E98A] hover:bg-white/[0.04] transition-colors flex items-center gap-1 cursor-pointer text-[#39E98A]/90 font-medium"
             >
-              <Sparkles className="w-3.5 h-3.5 text-[#39E98A]" />
-              <span>Money Recommendation</span>
+              <MapPin className="w-3.5 h-3.5 text-[#39E98A]" />
+              <span>Jobs Near Me</span>
             </button>
             <button 
-              onClick={() => onNavigateToTab ? onNavigateToTab('advisor') : scrollTo('advisor')}
-              className="px-3.5 py-1.5 rounded-lg hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
+              onClick={() => onNavigateToTab ? onNavigateToTab('saved') : null}
+              className="px-3 py-1.5 rounded-lg hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
             >
-              Advisor
+              Saved
+            </button>
+            <button 
+              onClick={() => onNavigateToTab ? onNavigateToTab('alerts') : null}
+              className="px-3 py-1.5 rounded-lg hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
+            >
+              Alerts
             </button>
             <button 
               onClick={() => onNavigateToTab ? onNavigateToTab('profile') : openAuthModal('login')}
-              className="px-3.5 py-1.5 rounded-lg hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-lg hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
             >
               Profile
             </button>
@@ -261,6 +276,31 @@ export default function PremiumHomePage({
 
           {/* Right Action Buttons */}
           <div className="hidden sm:flex items-center gap-3">
+            {/* Realtime Live Notifications Tray */}
+            <NotificationTray 
+              onSelectJob={onSelectOpportunity} 
+              onNavigateToTab={onNavigateToTab} 
+            />
+
+            {/* Dark / Bright Mode Toggle */}
+            <button 
+              type="button"
+              onClick={toggleTheme}
+              className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
+                isDark 
+                  ? 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700' 
+                  : 'bg-amber-50 border-amber-300 text-amber-600 hover:text-amber-800 hover:bg-amber-100 shadow-sm'
+              }`}
+              title={isDark ? "Switch to Bright Mode" : "Switch to Dark Mode"}
+              aria-label={isDark ? "Switch to Bright Mode" : "Switch to Dark Mode"}
+            >
+              {isDark ? (
+                <Moon className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <Sun className="w-4 h-4 text-amber-500" />
+              )}
+            </button>
+
             {isAuthenticated ? (
               <div className="flex items-center gap-2.5">
                 <button
@@ -327,11 +367,28 @@ export default function PremiumHomePage({
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden px-4 pt-3 pb-5 bg-[#070A0F]/95 backdrop-blur-xl border-b border-white/[0.08] space-y-2 text-sm font-medium text-[#89938D]">
+            <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+              <span className="text-xs text-stone-400">Display Theme</span>
+              <button 
+                type="button"
+                onClick={toggleTheme}
+                className="px-3 py-1 rounded-lg border border-slate-700 bg-slate-900 flex items-center gap-1.5 text-xs text-white"
+              >
+                {isDark ? <Moon className="w-3.5 h-3.5 text-emerald-400" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
+                <span>{isDark ? 'Dark Mode' : 'Bright Mode'}</span>
+              </button>
+            </div>
             <button 
               onClick={() => { setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
               className="block w-full text-left py-2 text-emerald-400 font-semibold"
             >
               Home
+            </button>
+            <button 
+              onClick={() => { setMobileMenuOpen(false); onNavigateToTab ? onNavigateToTab('discover') : scrollTo('discover'); }} 
+              className="block w-full text-left py-2 hover:text-white"
+            >
+              Discover
             </button>
             <button 
               onClick={() => { setMobileMenuOpen(false); onNavigateToTab ? onNavigateToTab('search') : scrollTo('recommended'); }} 
@@ -340,17 +397,23 @@ export default function PremiumHomePage({
               Search
             </button>
             <button 
-              onClick={() => { setMobileMenuOpen(false); onNavigateToTab ? onNavigateToTab('recommendations') : scrollTo('discover'); }} 
-              className="block w-full text-left py-2 hover:text-white flex items-center gap-2"
+              onClick={() => { setMobileMenuOpen(false); onNavigateToTab ? onNavigateToTab('nearby') : null; }} 
+              className="block w-full text-left py-2 hover:text-[#39E98A] text-[#39E98A]/90 font-medium flex items-center gap-1.5"
             >
-              <Sparkles className="w-3.5 h-3.5 text-[#39E98A]" />
-              <span>Money Recommendation</span>
+              <MapPin className="w-3.5 h-3.5 text-[#39E98A]" />
+              <span>Jobs Near Me</span>
             </button>
             <button 
-              onClick={() => { setMobileMenuOpen(false); onNavigateToTab ? onNavigateToTab('advisor') : scrollTo('advisor'); }} 
+              onClick={() => { setMobileMenuOpen(false); onNavigateToTab ? onNavigateToTab('saved') : null; }} 
               className="block w-full text-left py-2 hover:text-white"
             >
-              Advisor
+              Saved Jobs
+            </button>
+            <button 
+              onClick={() => { setMobileMenuOpen(false); onNavigateToTab ? onNavigateToTab('alerts') : null; }} 
+              className="block w-full text-left py-2 hover:text-white"
+            >
+              Job Alerts
             </button>
             <button 
               onClick={() => { setMobileMenuOpen(false); onNavigateToTab ? onNavigateToTab('profile') : openAuthModal('login'); }} 
@@ -388,48 +451,68 @@ export default function PremiumHomePage({
       </nav>
 
       {/* ──────────────────────────────────────────────────────────── */}
-      {/* 2. CINEMATIC HERO (EXACT OPPORTUNITY AI LAYOUT)               */}
+      {/* 2. CINEMATIC HERO (SECTION 21 SPECIFICATION)                 */}
       {/* ──────────────────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex flex-col justify-between px-4 sm:px-6 lg:px-8 pt-20 pb-8">
+      <section className="relative min-h-[85vh] flex flex-col justify-between px-4 sm:px-6 lg:px-8 pt-20 pb-8">
         
         {/* Center Content */}
         <div className="max-w-4xl mx-auto w-full text-center space-y-6 relative z-10 pt-6 sm:pt-12">
           
           {/* Eyebrow Label */}
-          <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/[0.12] text-[11px] font-mono tracking-widest uppercase text-stone-300 mx-auto shadow-lg">
-            <span>DISCOVER</span>
+          <div className={`inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full backdrop-blur-md text-[11px] font-mono tracking-widest uppercase mx-auto shadow-sm ${
+            isDark 
+              ? 'bg-black/50 border border-white/[0.12] text-stone-300' 
+              : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+          }`}>
+            <span>REAL OPPORTUNITIES</span>
             <span className="text-[#39E98A]">✦</span>
-            <span>LEARN</span>
+            <span>VERIFIED APPLICATION LINKS</span>
             <span className="text-[#39E98A]">✦</span>
-            <span>GROW</span>
+            <span>ZERO FABRICATION</span>
           </div>
 
-          {/* Main Heading */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-[#F5F7F5] leading-[1.08] drop-shadow-xl">
-            The Right Opportunity <br className="hidden sm:inline" />
-            <span className="text-[#39E98A]">is Closer Than You Think</span>
+          {/* Main Heading - Section 21 Exact */}
+          <h1 className={`text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] ${
+            isDark ? 'text-[#F5F7F5] drop-shadow-xl' : 'text-slate-900'
+          }`}>
+            Find work that fits your life.
           </h1>
 
           {/* Supporting Text */}
-          <p className="text-sm sm:text-base text-stone-300 leading-relaxed max-w-2xl mx-auto font-normal drop-shadow">
-            Find the best career, freelance, and business opportunities with the power of AI. Your future starts here.
+          <p className={`text-sm sm:text-base leading-relaxed max-w-2xl mx-auto font-normal ${
+            isDark ? 'text-stone-300 drop-shadow' : 'text-slate-600'
+          }`}>
+            Discover verified jobs across tech, delivery, hospitality, retail, healthcare, and skilled trades. Authentic postings with direct employer application links.
           </p>
 
-          {/* Search Bar (Rounded Pill Container from reference image) */}
-          <div className="max-w-2xl mx-auto w-full pt-2">
+          {/* Search Bar & Action Buttons */}
+          <div className="max-w-2xl mx-auto w-full pt-2 space-y-3">
             <form 
-              onSubmit={handleExecuteSearch}
-              className="relative p-1.5 rounded-full bg-white/[0.03] backdrop-blur-md border border-white/[0.12] hover:border-[#39E98A]/50 focus-within:border-[#39E98A] shadow-xl transition-all flex items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (onNavigateToTab) {
+                  onNavigateToTab('search', null, searchInput);
+                } else {
+                  handleExecuteSearch(e, searchInput);
+                }
+              }}
+              className={`relative p-1.5 rounded-full backdrop-blur-md border transition-all flex items-center gap-2 ${
+                isDark 
+                  ? 'bg-white/[0.03] border-white/[0.12] hover:border-[#39E98A]/50 focus-within:border-[#39E98A] shadow-xl' 
+                  : 'bg-white border-slate-300 hover:border-emerald-500 focus-within:border-emerald-500 shadow-lg'
+              }`}
             >
-              <div className="pl-4 text-stone-400">
+              <div className={`pl-4 ${isDark ? 'text-stone-400' : 'text-slate-400'}`}>
                 <Search className="w-5 h-5" />
               </div>
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="What are you looking for? (e.g. remote jobs, skills, freelance...)"
-                className="flex-1 bg-transparent border-none text-xs sm:text-sm text-white placeholder-stone-400 focus:outline-none focus:ring-0 px-2"
+                placeholder="What kind of work are you looking for?"
+                className={`flex-1 bg-transparent border-none text-xs sm:text-sm focus:outline-none focus:ring-0 px-2 ${
+                  isDark ? 'text-white placeholder-stone-400' : 'text-slate-900 placeholder-slate-400'
+                }`}
               />
               {searchInput && (
                 <button
@@ -443,41 +526,73 @@ export default function PremiumHomePage({
               <button
                 type="submit"
                 disabled={searchLoading}
-                className="w-10 h-10 rounded-full bg-[#39E98A] hover:bg-[#32d47c] text-[#070A0F] font-bold transition-all flex items-center justify-center shadow-md shadow-[#39E98A]/30 flex-shrink-0 cursor-pointer"
-                aria-label="Search opportunities"
+                className="px-5 py-2.5 rounded-full bg-[#39E98A] hover:bg-[#32d47c] text-[#070A0F] font-bold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-[#39E98A]/30 flex-shrink-0 cursor-pointer"
+                aria-label="Find Jobs"
               >
                 {searchLoading ? (
-                  <span className="text-[10px]">...</span>
+                  <span className="text-[10px]">Searching...</span>
                 ) : (
-                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                  <>
+                    <span>Find Jobs</span>
+                    <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                  </>
                 )}
               </button>
             </form>
 
-            {/* Quick Category Chips (from the image: Jobs, Freelance, Skills, Business, More) */}
-            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-4">
-              {[
-                { id: 'jobs', label: 'Jobs', icon: Briefcase, q: 'Remote jobs' },
-                { id: 'freelance', label: 'Freelance', icon: Laptop, q: 'Freelance' },
-                { id: 'skills', label: 'Skills', icon: GraduationCap, q: 'Skills' },
-                { id: 'business', label: 'Business', icon: TrendingUp, q: 'Business' },
-                { id: 'more', label: 'More', icon: LayoutGrid, q: 'Part-time' }
-              ].map((cat) => {
-                const Icon = cat.icon;
-                return (
+            {/* Prominent Action Buttons - Section 21 */}
+            <div className="flex items-center justify-center gap-3 pt-1">
+              <button
+                onClick={() => onNavigateToTab ? onNavigateToTab('search', null, searchInput) : null}
+                className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.12] text-white text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Search className="w-3.5 h-3.5 text-[#39E98A]" />
+                <span>Find Jobs</span>
+              </button>
+              <button
+                onClick={() => onNavigateToTab ? onNavigateToTab('nearby') : null}
+                className="px-4 py-2 rounded-xl bg-[#39E98A]/10 hover:bg-[#39E98A]/20 border border-[#39E98A]/30 text-[#39E98A] text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <MapPin className="w-3.5 h-3.5 text-[#39E98A]" />
+                <span>Jobs Near Me</span>
+              </button>
+              <button
+                onClick={() => onNavigateToTab ? onNavigateToTab('discover') : null}
+                className="px-4 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-stone-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Compass className="w-3.5 h-3.5 text-stone-400" />
+                <span>Discover</span>
+              </button>
+            </div>
+
+            {/* Section 21 Exact Example Queries */}
+            <div className="pt-2">
+              <p className="text-[11px] text-stone-400 mb-2">Try searching naturally:</p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {[
+                  "I want delivery work near me",
+                  "Find software jobs for freshers",
+                  "I need evening part-time work",
+                  "Show catering jobs nearby"
+                ].map((exampleQuery, idx) => (
                   <button
-                    key={cat.id}
-                    onClick={(e) => {
-                      setSearchInput(cat.q);
-                      handleExecuteSearch(e, cat.q);
+                    key={idx}
+                    onClick={() => {
+                      setSearchInput(exampleQuery);
+                      if (onNavigateToTab) {
+                        onNavigateToTab('search', null, exampleQuery);
+                      } else {
+                        handleExecuteSearch(null, exampleQuery);
+                      }
                     }}
-                    className="px-4 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.1] hover:border-[#39E98A]/50 text-stone-300 hover:text-white text-xs font-medium transition-all flex items-center gap-2 shadow-lg backdrop-blur-sm cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
+                    className="px-3 py-1.5 rounded-lg bg-black/40 hover:bg-white/[0.08] border border-white/[0.08] hover:border-[#39E98A]/40 text-stone-300 hover:text-white text-[11px] transition-all cursor-pointer flex items-center gap-1.5"
                   >
-                    <Icon className="w-3.5 h-3.5 text-stone-400 group-hover:text-white" />
-                    <span>{cat.label}</span>
+                    <span className="text-[#39E98A]">“</span>
+                    <span>{exampleQuery}</span>
+                    <span className="text-[#39E98A]">”</span>
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
           </div>
         </div>
