@@ -201,7 +201,7 @@ export default function PersonalDashboard({
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <Bookmark className="w-5 h-5 text-emerald-400" />
-              <span>Saved Opportunities ({savedOpportunities.length})</span>
+              <span>Saved Opportunities ({effectiveSavedOpps.length})</span>
             </h2>
             <p className="text-xs text-slate-400">Organized by category folders.</p>
           </div>
@@ -234,9 +234,9 @@ export default function PersonalDashboard({
               <div key={opp.id} className="p-5 rounded-2xl bg-slate-850 border border-slate-800 flex flex-col justify-between hover:border-slate-700 transition-all">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">{opp.category}</span>
+                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">{opp.category || 'Career'}</span>
                     <button
-                      onClick={() => onRemoveSaved(opp.id)}
+                      onClick={() => onRemoveSaved && onRemoveSaved(opp.id)}
                       className="text-slate-500 hover:text-rose-400 transition-colors"
                       title="Remove from Saved"
                     >
@@ -244,13 +244,15 @@ export default function PersonalDashboard({
                     </button>
                   </div>
                   <h4 className="text-base font-bold text-white mb-2">{opp.title}</h4>
-                  <p className="text-xs text-slate-300 mb-3">{opp.howItWorks.slice(0, 120)}...</p>
+                  <p className="text-xs text-slate-300 mb-3">{(opp.howItWorks || opp.description || '').slice(0, 120)}...</p>
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-slate-800 text-xs">
-                  <span className="font-semibold text-emerald-400">{opp.investment.min === 0 ? '₹0 Initial' : `₹${opp.investment.min}`}</span>
+                  <span className="font-semibold text-emerald-400">
+                    {opp.investment?.min === 0 ? '₹0 Initial' : (opp.investment?.min ? `₹${opp.investment.min}` : 'Free')}
+                  </span>
                   <button
-                    onClick={() => onSelectOpportunity(opp)}
+                    onClick={() => onSelectOpportunity && onSelectOpportunity(opp)}
                     className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold flex items-center gap-1.5 transition-colors"
                   >
                     <span>View Guide</span>

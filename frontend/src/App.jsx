@@ -808,10 +808,13 @@ export default function App() {
                     <ProtectedRoute title="Personal Profile & Dashboard" message="Sign in to view your personalized profile, constraints, and recommendations.">
                       <PersonalDashboard
                         userProfile={userProfile}
-                        savedOpportunities={savedOpportunities}
+                        savedIds={savedIds}
+                        rejectedIds={rejectedIds}
+                        allOpportunities={allOpportunities}
                         onOpenQuestionnaire={() => setShowQuestionnaire(true)}
                         onSelectOpportunity={(opp) => setSelectedOpportunityForDetail(opp)}
-                        onNavigateToTab={(tab) => setCurrentTab(tab)}
+                        onRemoveSaved={handleSaveOpportunity}
+                        onNavigateToTab={handleNavigateTab}
                       />
                     </ProtectedRoute>
                   )}
