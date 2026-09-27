@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
+import { UserModel } from './schemas.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,6 +13,10 @@ const DATA_FILE = path.join(__dirname, '..', 'data', 'users.json');
 // In-memory cache for fast lookups, synced to file on mutation
 let usersCache = [];
 let isInitialized = false;
+
+function isMongoConnected() {
+  return mongoose.connection.readyState === 1;
+}
 
 /**
  * Ensure default users exist (e.g. admin and sample user for testing)
@@ -37,7 +43,7 @@ async function initializeUsersStore() {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash('Admin@123456', salt);
     const now = new Date().toISOString();
-    usersCache.push({
+    const adminDoc = {
       id: 'usr_admin_default',
       name: 'System Administrator',
       email: adminEmail,
@@ -60,8 +66,13 @@ async function initializeUsersStore() {
       createdAt: now,
       updatedAt: now,
       lastLoginAt: null
-    });
+    };
+    usersCache.push(adminDoc);
     saveToFile();
+
+    if (isMongoConnected()) {
+      UserModel.findOneAndUpdate({ email: adminEmail }, adminDoc, { upsert: true }).catch(() => {});
+    }
   }
 
   // Ensure default demo user exists for immediate testing
@@ -71,7 +82,7 @@ async function initializeUsersStore() {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash('User@123456', salt);
     const now = new Date().toISOString();
-    usersCache.push({
+    const demoDoc = {
       id: 'usr_demo_user',
       name: 'Alex Kumar',
       email: demoEmail,
@@ -94,8 +105,13 @@ async function initializeUsersStore() {
       createdAt: now,
       updatedAt: now,
       lastLoginAt: null
-    });
+    };
+    usersCache.push(demoDoc);
     saveToFile();
+
+    if (isMongoConnected()) {
+      UserModel.findOneAndUpdate({ email: demoEmail }, demoDoc, { upsert: true }).catch(() => {});
+    }
   }
 
   isInitialized = true;
@@ -125,7 +141,7 @@ export class User {
    */
   static toSafeUser(user) {
     if (!user) return null;
-    const { passwordHash, ...safe } = user;
+    const { passwordHash, _id, __v, ...safe } = (user._doc || user);
     return safe;
   }
 
@@ -133,6 +149,14 @@ export class User {
    * Find user by ID
    */
   static async findById(id) {
+    if (isMongoConnected()) {
+      try {
+        const mongoUser = await UserModel.findOne({ id }).lean();
+        if (mongoUser) return mongoUser;
+      } catch (err) {
+        console.warn('MongoDB findById fallback:', err.message);
+      }
+    }
     await initializeUsersStore();
     return usersCache.find(u => u.id === id) || null;
   }
@@ -142,8 +166,18 @@ export class User {
    */
   static async findByEmail(email) {
     if (!email) return null;
-    await initializeUsersStore();
     const normalized = email.trim().toLowerCase();
+
+    if (isMongoConnected()) {
+      try {
+        const mongoUser = await UserModel.findOne({ email: normalized }).lean();
+        if (mongoUser) return mongoUser;
+      } catch (err) {
+        console.warn('MongoDB findByEmail fallback:', err.message);
+      }
+    }
+
+    await initializeUsersStore();
     return usersCache.find(u => u.email.toLowerCase() === normalized) || null;
   }
 
@@ -152,6 +186,18 @@ export class User {
    */
   static async findByFirebaseUid(firebaseUid) {
     if (!firebaseUid) return null;
+
+    if (isMongoConnected()) {
+      try {
+        const mongoUser = await UserModel.findOne({
+          $or: [{ firebaseUid }, { googleId: firebaseUid }]
+        }).lean();
+        if (mongoUser) return mongoUser;
+      } catch (err) {
+        console.warn('MongoDB findByFirebaseUid fallback:', err.message);
+      }
+    }
+
     await initializeUsersStore();
     return usersCache.find(u => u.firebaseUid === firebaseUid || u.googleId === firebaseUid) || null;
   }
@@ -161,6 +207,18 @@ export class User {
    */
   static async findByGoogleId(googleId) {
     if (!googleId) return null;
+
+    if (isMongoConnected()) {
+      try {
+        const mongoUser = await UserModel.findOne({
+          $or: [{ googleId }, { firebaseUid: googleId }]
+        }).lean();
+        if (mongoUser) return mongoUser;
+      } catch (err) {
+        console.warn('MongoDB findByGoogleId fallback:', err.message);
+      }
+    }
+
     await initializeUsersStore();
     return usersCache.find(u => u.googleId === googleId || u.firebaseUid === googleId) || null;
   }
@@ -195,7 +253,7 @@ export class User {
       firebaseUid: effectiveUid,
       provider,
       avatar: avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'User')}`,
-      role: role === 'admin' ? 'admin' : 'user', // Default to 'user'
+      role: role === 'admin' ? 'admin' : 'user',
       isVerified: Boolean(isVerified),
       savedOpportunities: [],
       profileData: profileData || { isProfileCompleted: false },
@@ -205,6 +263,16 @@ export class User {
       lastLoginAt: null
     };
 
+    // Save to MongoDB
+    if (isMongoConnected()) {
+      try {
+        await UserModel.create(newUser);
+      } catch (err) {
+        console.error('MongoDB UserModel.create error:', err.message);
+      }
+    }
+
+    // Always update local cache & backup file
     usersCache.push(newUser);
     saveToFile();
     return newUser;
@@ -215,33 +283,52 @@ export class User {
    */
   static async update(id, updates) {
     await initializeUsersStore();
-    const index = usersCache.findIndex(u => u.id === id);
-    if (index === -1) return null;
-
-    const user = usersCache[index];
     const normalizedUpdates = { ...updates };
     if (normalizedUpdates.firebaseUid && !normalizedUpdates.googleId) {
       normalizedUpdates.googleId = normalizedUpdates.firebaseUid;
     } else if (normalizedUpdates.googleId && !normalizedUpdates.firebaseUid) {
       normalizedUpdates.firebaseUid = normalizedUpdates.googleId;
     }
+    normalizedUpdates.updatedAt = new Date().toISOString();
 
-    const updated = {
-      ...user,
-      ...normalizedUpdates,
-      id: user.id, // prevent id overwrite
-      updatedAt: new Date().toISOString()
-    };
+    // Update in MongoDB
+    if (isMongoConnected()) {
+      try {
+        await UserModel.findOneAndUpdate({ id }, normalizedUpdates, { new: true });
+      } catch (err) {
+        console.error('MongoDB UserModel.update error:', err.message);
+      }
+    }
 
-    usersCache[index] = updated;
-    saveToFile();
-    return updated;
+    // Update in local cache
+    const index = usersCache.findIndex(u => u.id === id);
+    if (index !== -1) {
+      const user = usersCache[index];
+      const updated = {
+        ...user,
+        ...normalizedUpdates,
+        id: user.id
+      };
+      usersCache[index] = updated;
+      saveToFile();
+      return updated;
+    }
+
+    return null;
   }
 
   /**
    * Delete user by ID
    */
   static async delete(id) {
+    if (isMongoConnected()) {
+      try {
+        await UserModel.deleteOne({ id });
+      } catch (err) {
+        console.error('MongoDB UserModel.delete error:', err.message);
+      }
+    }
+
     await initializeUsersStore();
     const initialLength = usersCache.length;
     usersCache = usersCache.filter(u => u.id !== id);
@@ -256,7 +343,19 @@ export class User {
    * Get all users (admin inspection only)
    */
   static async findAll() {
+    if (isMongoConnected()) {
+      try {
+        const mongoUsers = await UserModel.find().lean();
+        if (mongoUsers && mongoUsers.length > 0) {
+          return mongoUsers.map(u => User.toSafeUser(u));
+        }
+      } catch (err) {
+        console.warn('MongoDB findAll fallback:', err.message);
+      }
+    }
+
     await initializeUsersStore();
     return usersCache.map(u => User.toSafeUser(u));
   }
 }
+

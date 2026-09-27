@@ -17,3 +17,5 @@ services:
         generateValue: true
       - key: CLIENT_URL
         value: https://money-way-frontend.vercel.app
+      - key: MONGODB_URI
+        sync: false

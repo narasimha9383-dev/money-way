@@ -1,6 +1,12 @@
 // backend/index.js
 import app from './app.js';
 import { PORT } from './config/constants.js';
+import { connectDB } from './config/db.js';
+
+// Connect to MongoDB
+connectDB().catch(err => {
+  console.error('[Money Way] Initial MongoDB connect failed:', err.message);
+});
 
 const server = app.listen(PORT, () => {
   console.log(`[Money Way] Backend API server running on port ${PORT}`);
