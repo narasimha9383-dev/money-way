@@ -11,7 +11,12 @@ import { isValidJobUrl, matchesExpectedSource, verifyJobUrlReachability } from '
 import { Opportunity } from '../models/Opportunity.js';
 import { getAllOpportunities } from '../data/store.js';
 import { VERIFIED_PARTNER_LISTINGS, getNationwidePartnerListingsForCity } from './opportunityFeedService.js';
-import { getCoordinatesForLocation, calculateHaversineDistance, resolveCoordinates } from './locationService.js';
+import { 
+  getCoordinatesForLocation, 
+  calculateHaversineDistance, 
+  resolveCoordinates,
+  resolveCoordinatesAsync 
+} from './locationService.js';
 
 // Cache for external API queries (15-minute TTL)
 const queryCache = new Map();
@@ -200,12 +205,23 @@ export function parseJobQuery(rawQuery = '', userProfile = {}) {
     }
   }
 
-  // Detect Location (Major Indian & Regional Cities)
+  // Detect Location (Major Indian, Regional Towns, Mandals, and Cities)
   const knownCities = [
-    'vadlamudi', 'tenali', 'guntur', 'vijayawada', 'amaravati', 'visakhapatnam', 'vizag', 'tirupati', 'mangalagiri',
-    'hyderabad', 'bengaluru', 'bangalore', 'chennai', 'mumbai', 'delhi', 
-    'pune', 'kolkata', 'noida', 'gurugram', 'gurgaon', 'ahmedabad', 
-    'jaipur', 'lucknow', 'chandigarh', 'kochi', 'coimbatore', 'indore',
+    // Andhra Pradesh Hubs, Towns & Mandals
+    'chirala', 'bapatla', 'ongole', 'narasaraopet', 'sattenapalle', 'chilakaluripet', 'macherla', 'vinukonda', 'piduguralla',
+    'ponnur', 'repalle', 'vadlamudi', 'chebrolu', 'tenali', 'guntur', 'mangalagiri', 'tadepalle', 'vijayawada', 'amaravati',
+    'machilipatnam', 'gudivada', 'nuzvid', 'gannavaram', 'vuyyuru', 'jaggaiahpet', 'nandigama', 'eluru', 'bhimavaram',
+    'tadepalligudem', 'tanuku', 'palakollu', 'narsapur', 'rajahmundry', 'kakinada', 'amalapuram', 'samalkota', 'tuni',
+    'visakhapatnam', 'vizag', 'anakapalli', 'vizianagaram', 'srikakulam', 'nellore', 'gudur', 'kavali', 'tirupati',
+    'chittoor', 'madanapalle', 'srikalahasti', 'kadapa', 'proddatur', 'kurnool', 'nandyal', 'adoni', 'anantapur', 'hindupur',
+    // Telangana Towns & Districts
+    'hyderabad', 'warangal', 'hanamkonda', 'karimnagar', 'nizamabad', 'khammam', 'ramagundam', 'mahbubnagar', 'nalgonda',
+    'suryapet', 'miryalaguda', 'siddipet', 'mancherial', 'adilabad',
+    // Metros & Tier-2/3 Indian Cities
+    'bengaluru', 'bangalore', 'chennai', 'mumbai', 'delhi', 'new delhi', 'pune', 'kolkata', 'noida', 'gurugram', 'gurgaon',
+    'ahmedabad', 'jaipur', 'lucknow', 'chandigarh', 'kochi', 'coimbatore', 'indore', 'mysuru', 'mysore', 'mangaluru',
+    'hubballi', 'belagavi', 'madurai', 'salem', 'trichy', 'vadodara', 'rajkot', 'nashik', 'aurangabad', 'bhopal', 'patna',
+    'surat', 'nagpur', 'jabalpur', 'gwalior', 'varanasi', 'agra', 'kanpur', 'ranchi', 'bhubaneswar', 'guwahati', 'dehradun', 'raipur',
     'london', 'berlin', 'new york', 'san francisco', 'toronto', 'dubai'
   ];
 
@@ -220,6 +236,34 @@ export function parseJobQuery(rawQuery = '', userProfile = {}) {
         parsed.isRemote = false;
       }
       break;
+    }
+  }
+
+  // Dynamic Natural Language Location Extraction: "jobs in Chirala", "delivery in Ongole", "near Bapatla"
+  if (!parsed.location) {
+    const inLocMatch = qLower.match(/\b(?:in|at|around|near)\s+([a-zA-Z\s]+?)(?:\s+(?:for|with|as|paying|above|below|full[\s-]?time|part[\s-]?time|jobs?|shift)|$)/i);
+    if (inLocMatch && inLocMatch[1]) {
+      const candidateLoc = inLocMatch[1].trim();
+      const noise = /^(remote|online|wfh|night|day|fresher|freshers|tech|delivery|retail|office|sales|hospitality|me|you|home)$/i;
+      if (!noise.test(candidateLoc) && candidateLoc.length >= 3) {
+        parsed.location = candidateLoc.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        if (parsed.remote === null) {
+          parsed.remote = false;
+          parsed.isRemote = false;
+        }
+      }
+    }
+  }
+
+  // If entire query is a single location name (e.g. user just searched "Chirala" or "Repalle")
+  if (!parsed.location && /^[a-zA-Z\s]{3,30}$/.test(queryStr)) {
+    const candidateWord = qLower.trim();
+    const noise = /^(remote|online|wfh|jobs?|fresher|internship|tech|sales|driver|delivery|retail|developer|engineer|office)$/i;
+    if (!noise.test(candidateWord)) {
+      // Check if known city or locality
+      if (knownCities.includes(candidateWord)) {
+        parsed.location = candidateWord.charAt(0).toUpperCase() + candidateWord.slice(1);
+      }
     }
   }
 
@@ -242,40 +286,157 @@ export function parseJobQuery(rawQuery = '', userProfile = {}) {
     parsed.location = profileLoc;
   }
 
-  // 11-Sector Intent Detection (Sections 6, 7)
+  // Multi-Sector Intent Detection (Sections 6, 7, 8, 9, 38)
   const roleRules = [
-    // 1. Office / Data Entry (Specific composite match for data entry first)
-    { regex: /\b(?:data entry|typing|back office|computer operator|clerk|filing|scanner|secretarial|mis executive|virtual administrative|executive assistant|office coordinator|office assistant|office boy|peon|admin assistant|administrative assistant|office helper|office administrative)\b/i, role: 'Office Assistant', title: 'Office Assistant', sector: 'Office', category: 'Administration' },
+    // 1. Engineering: Electrical
+    { 
+      regex: /\b(?:electrical\s*(?:engineer(?:ing)?|design|project|maintenance|systems|power)|power\s*systems?|controls?\s*engineer|electrical\s*work\s*but\s*not\s*electrician)\b/i, 
+      role: 'Electrical Engineer', 
+      title: 'Electrical Engineer', 
+      sector: 'Engineering', 
+      category: 'Electrical Engineering',
+      relatedRoles: ['Electrical Design Engineer', 'Site Electrical Engineer', 'Electrical Project Engineer', 'Power Systems Engineer', 'Controls Engineer', 'Electrical Maintenance Engineer']
+    },
 
-    // 2. Hospitality / Culinary
-    { regex: /\b(?:catering|catring|banquet|catering helper|catering server|event staff|cook|chef|kitchen helper|prep cook|culinary|hotel|restaurant|waiter|steward|dining|bartender|barista|cafe|dishwasher|tandoor|resort|room service|bellboy|food and beverage|cloud kitchen|hospitality)\b/i, role: 'Hospitality Associate', title: 'Hospitality Associate', sector: 'Hospitality', category: 'Hospitality' },
+    // 2. Engineering: Mechanical
+    { 
+      regex: /\b(?:mechanical\s*(?:engineer(?:ing)?|design|project|maintenance|cad)|cad\s*(?:engineer|designer)|autocad|solidworks|hvac\s*engineer|automotive\s*engineer)\b/i, 
+      role: 'Mechanical Engineer', 
+      title: 'Mechanical Engineer', 
+      sector: 'Engineering', 
+      category: 'Mechanical Engineering',
+      relatedRoles: ['CAD / Design Engineer', 'HVAC Engineer', 'Manufacturing Engineer', 'Quality Control Engineer', 'Automotive Engineer']
+    },
 
-    // 3. Healthcare
-    { regex: /\b(?:hospital|clinic|medical assistant|medical records|pharmacy|pharmacist|healthcare|nurse|nursing assistant|ward boy|patient care|diagnostic lab|sample collector|dental clinic|phlebotomist|dialysis|pathology|home healthcare)\b/i, role: 'Healthcare Assistant', title: 'Healthcare Assistant', sector: 'Healthcare', category: 'Healthcare' },
+    // 3. Engineering: Civil
+    { 
+      regex: /\b(?:civil\s*(?:engineer(?:ing)?|site|project|construction)|structural\s*engineer|site\s*engineer|quantity\s*surveyor)\b/i, 
+      role: 'Civil Engineer', 
+      title: 'Civil Engineer', 
+      sector: 'Engineering', 
+      category: 'Civil Engineering',
+      relatedRoles: ['Site Engineer', 'Structural Engineer', 'Surveyor', 'Quantity Estimator', 'Project Coordinator']
+    },
 
-    // 4. Education / Tutoring
-    { regex: /\b(?:tutor|tutoring|teaching assistant|teacher|academic counselor|trainer|home tutor|online teacher|preschool|daycare|tuition|science tutor|math tutor|school|kindergarten|curriculum|spoken english|college library)\b/i, role: 'Tutor / Educator', title: 'Tutor / Educator', sector: 'Education', category: 'Education' },
+    // 4. Engineering: Electronics
+    { 
+      regex: /\b(?:electronics\s*(?:engineer(?:ing)?|technician)|embedded\s*systems?|vlsi|pcb\s*design|iot\s*engineer|hardware\s*engineer)\b/i, 
+      role: 'Electronics Engineer', 
+      title: 'Electronics Engineer', 
+      sector: 'Engineering', 
+      category: 'Electronics Engineering',
+      relatedRoles: ['Embedded Systems Engineer', 'PCB Designer', 'Hardware Test Engineer', 'IoT Specialist']
+    },
 
-    // 5. Customer Service / BPO
-    { regex: /\b(?:customer support|customer care|customer service|bpo|call center|telecalling|telecaller|telemarketing|voice process|non-voice|chat support|helpdesk|technical support|client service|customer relation|customer resolution|customer happiness)\b/i, role: 'Customer Support Representative', title: 'Customer Support Representative', sector: 'Customer Service', category: 'Customer Support' },
+    // 5. Office / Data Entry
+    { 
+      regex: /\b(?:data entry|typing|back office|computer operator|clerk|filing|scanner|secretarial|mis executive|virtual administrative|executive assistant|office coordinator|office assistant|office boy|peon|admin assistant|administrative assistant|office helper|office administrative)\b/i, 
+      role: 'Office Assistant', 
+      title: 'Office Assistant', 
+      sector: 'Office', 
+      category: 'Administration',
+      relatedRoles: ['Data Entry Operator', 'Back Office Executive', 'Receptionist', 'Administrative Coordinator', 'Filing Assistant']
+    },
 
-    // 6. Delivery / Logistics
-    { regex: /\b(?:delivery|delivering|delivery boy|rider|courier|delivery partner|delivery executive|zomato|swiggy|shadowfax|blinkit|warehouse|packing|picker|packer|hub associate|sorting|delhivery|driver|chauffeur|car driver|auto driver|truck driver|logistics|cargo|loader|storekeeper|inventory|dispatch|food parcel|e-commerce order)\b/i, role: 'Delivery Executive', title: 'Delivery Executive', sector: 'Delivery / Logistics', category: 'Logistics' },
+    // 6. Hospitality / Culinary
+    { 
+      regex: /\b(?:catering|catring|banquet|catering helper|catering server|event staff|cook|chef|kitchen helper|prep cook|culinary|hotel|restaurant|waiter|steward|dining|bartender|barista|cafe|dishwasher|tandoor|resort|room service|bellboy|food and beverage|cloud kitchen|hospitality)\b/i, 
+      role: 'Hospitality Associate', 
+      title: 'Hospitality Associate', 
+      sector: 'Hospitality', 
+      category: 'Hospitality',
+      relatedRoles: ['Catering Assistant', 'Restaurant Steward', 'Kitchen Helper', 'Chef / Line Cook', 'Front Desk Associate']
+    },
 
-    // 7. Technology / Software
-    { regex: /\b(?:coding|code|software|developer|frontend|backend|full[\s-]?stack|web dev|web designer|programmer|java|python|react|node|django|flutter|android|data analyst|qa tester|testing|it support|b\.?tech|devops|cyber security|machine learning|ai |sql|database|cloud(?! kitchen)|aws|php|c\+\+|computer science|\btech\b|\btech jobs\b)\b/i, role: 'Software Developer', title: 'Software Developer', sector: 'Technology', category: 'Technology' },
+    // 7. Healthcare
+    { 
+      regex: /\b(?:hospital|clinic|medical assistant|medical records|pharmacy|pharmacist|healthcare|nurse|nursing assistant|ward boy|patient care|diagnostic lab|sample collector|dental clinic|phlebotomist|dialysis|pathology|home healthcare)\b/i, 
+      role: 'Healthcare Assistant', 
+      title: 'Healthcare Assistant', 
+      sector: 'Healthcare', 
+      category: 'Healthcare',
+      relatedRoles: ['Pharmacy Assistant', 'Lab Technician', 'Clinic Coordinator', 'Patient Care Associate', 'Ward Assistant']
+    },
 
-    // 8. Finance & Banking
-    { regex: /\b(?:accounts assistant|accountant|accounting|accounts|banking|bookkeeper|finance intern|financial analyst|tally|loan|recovery|audit|tax|gst|bank branch|credit card|cash management|mutual fund|billing clerk|accounts payable|chartered accountant|b\.?com)\b/i, role: 'Accounts Assistant', title: 'Accounts Assistant', sector: 'Finance', category: 'Finance' },
+    // 8. Education / Tutoring
+    { 
+      regex: /\b(?:tutor|tutoring|teaching assistant|teacher|academic counselor|trainer|home tutor|online teacher|preschool|daycare|tuition|science tutor|math tutor|school|kindergarten|curriculum|spoken english|college library)\b/i, 
+      role: 'Tutor / Educator', 
+      title: 'Tutor / Educator', 
+      sector: 'Education', 
+      category: 'Education',
+      relatedRoles: ['Home Tutor', 'Online Educator', 'Academic Counselor', 'Science & Math Tutor', 'Teaching Assistant']
+    },
 
-    // 9. Retail
-    { regex: /\b(?:retail|store associate|cashier|sales associate|showroom|store assistant|retail executive|supermarket|hypermarket|counter sales|visual merchandiser|shelf stacker|stock associate|bookstore|apparel|department store|convenience store|salesperson|grocery store|mobile shop|shopping mall)\b/i, role: 'Retail Sales Associate', title: 'Retail Sales Associate', sector: 'Retail', category: 'Retail' },
+    // 9. Customer Service / BPO
+    { 
+      regex: /\b(?:customer support|customer care|customer service|bpo|call center|telecalling|telecaller|telemarketing|voice process|non-voice|chat support|helpdesk|technical support|client service|customer relation|customer resolution|customer happiness)\b/i, 
+      role: 'Customer Support Representative', 
+      title: 'Customer Support Representative', 
+      sector: 'Customer Service', 
+      category: 'Customer Support',
+      relatedRoles: ['Voice Process Executive', 'Non-Voice Chat Support', 'Technical Helpdesk', 'Telecaller', 'Customer Happiness Specialist']
+    },
 
-    // 10. Marketing & Sales
-    { regex: /\b(?:field sales|field marketing|digital marketing|business development|seo|social media|content writer|copywriter|promoter|brand promoter|direct sales|email marketing|lead generation|fmcg|advertising|influencer|inside sales|google ads|campus ambassador)\b/i, role: 'Sales & Marketing Executive', title: 'Sales & Marketing Executive', sector: 'Marketing', category: 'Marketing' },
+    // 10. Delivery / Logistics
+    { 
+      regex: /\b(?:delivery|delivering|delivery boy|rider|courier|delivery partner|delivery executive|zomato|swiggy|shadowfax|blinkit|warehouse|packing|picker|packer|hub associate|sorting|delhivery|driver|chauffeur|car driver|auto driver|truck driver|logistics|cargo|loader|storekeeper|inventory|dispatch|food parcel|e-commerce order)\b/i, 
+      role: 'Delivery Executive', 
+      title: 'Delivery Executive', 
+      sector: 'Delivery / Logistics', 
+      category: 'Logistics',
+      relatedRoles: ['Courier Rider', 'Warehouse Associate', 'Hub Sorter', 'Fleet Driver', 'Inventory Specialist']
+    },
 
-    // 11. Skilled Work / Trades
-    { regex: /\b(?:electrician|electrical|wiring|wireman|plumber|plumbing|pipe fitter|technician|mechanic|carpenter|ac repair|ac technician|maintenance|cleaning|cleaner|housekeeping|sweeper|janitor|security guard|security officer|watchman|guard|cctv|solar panel|welder|fabricator|painter|decorator|ro water|elevator|lift|hvac|motor winding|refrigeration|cnc machine)\b/i, role: 'Skilled Trades Specialist', title: 'Skilled Trades Specialist', sector: 'Skilled Work', category: 'Trades' }
+    // 11. Technology / Software
+    { 
+      regex: /\b(?:coding|code|software|developer|frontend|backend|full[\s-]?stack|web dev|web designer|programmer|java|python|react|node|django|flutter|android|data analyst|qa tester|testing|it support|b\.?tech|devops|cyber security|machine learning|ai |sql|database|cloud(?! kitchen)|aws|php|c\+\+|computer science|\btech\b|\btech jobs\b)\b/i, 
+      role: 'Software Developer', 
+      title: 'Software Developer', 
+      sector: 'Technology', 
+      category: 'Technology',
+      relatedRoles: ['Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'Data Analyst', 'QA Engineer', 'DevOps Specialist']
+    },
+
+    // 12. Finance & Banking
+    { 
+      regex: /\b(?:accounts assistant|accountant|accounting|accounts|banking|bookkeeper|finance intern|financial analyst|tally|loan|recovery|audit|tax|gst|bank branch|credit card|cash management|mutual fund|billing clerk|accounts payable|chartered accountant|b\.?com)\b/i, 
+      role: 'Accounts Assistant', 
+      title: 'Accounts Assistant', 
+      sector: 'Finance', 
+      category: 'Finance',
+      relatedRoles: ['Junior Accountant', 'Billing Clerk', 'Tally Operator', 'Audit Assistant', 'Finance Trainee']
+    },
+
+    // 13. Retail
+    { 
+      regex: /\b(?:retail|store associate|cashier|sales associate|showroom|store assistant|retail executive|supermarket|hypermarket|counter sales|visual merchandiser|shelf stacker|stock associate|bookstore|apparel|department store|convenience store|salesperson|grocery store|mobile shop|shopping mall)\b/i, 
+      role: 'Retail Sales Associate', 
+      title: 'Retail Sales Associate', 
+      sector: 'Retail', 
+      category: 'Retail',
+      relatedRoles: ['Store Associate', 'Cashier', 'Visual Merchandiser', 'Counter Sales Representative', 'Stock Supervisor']
+    },
+
+    // 14. Marketing & Sales
+    { 
+      regex: /\b(?:field sales|field marketing|digital marketing|business development|seo|social media|content writer|copywriter|promoter|brand promoter|direct sales|email marketing|lead generation|fmcg|advertising|influencer|inside sales|google ads|campus ambassador)\b/i, 
+      role: 'Sales & Marketing Executive', 
+      title: 'Sales & Marketing Executive', 
+      sector: 'Marketing', 
+      category: 'Marketing',
+      relatedRoles: ['Field Sales Executive', 'Digital Marketing Associate', 'Business Development Rep', 'Content Creator', 'Brand Promoter']
+    },
+
+    // 15. Skilled Work / Trades
+    { 
+      regex: /\b(?:electrician|wiring|wireman|plumber|plumbing|pipe fitter|technician|mechanic|carpenter|ac repair|ac technician|maintenance|cleaning|cleaner|housekeeping|sweeper|janitor|security guard|security officer|watchman|guard|cctv|solar panel|welder|fabricator|painter|decorator|ro water|elevator|lift|hvac|motor winding|refrigeration|cnc machine)\b/i, 
+      role: 'Skilled Trades Specialist', 
+      title: 'Skilled Trades Specialist', 
+      sector: 'Skilled Work', 
+      category: 'Trades',
+      relatedRoles: ['Electrician', 'Plumber', 'HVAC Technician', 'Appliance Mechanic', 'Facility Maintenance']
+    }
   ];
 
   for (const rule of roleRules) {
@@ -284,8 +445,15 @@ export function parseJobQuery(rawQuery = '', userProfile = {}) {
       parsed.jobTitle = rule.title;
       parsed.sector = rule.sector;
       parsed.category = rule.category;
+      parsed.relatedRoles = rule.relatedRoles || [];
       break;
     }
+  }
+
+  // Detect negative constraints (e.g. "I don't want sales jobs", "not electrician")
+  const notMatch = qLower.match(/\b(?:not|no|don't want|without)\s+([a-zA-Z\s]+?)(?:\s+(?:jobs?|work)|$)/i);
+  if (notMatch && notMatch[1]) {
+    parsed.excludedKeywords = notMatch[1].trim().toLowerCase().split(/\s+/).filter(w => w.length > 2);
   }
 
   // Clean keyword: remove noise words like "jobs in", "near me", "near you", "jobs near you", "looking for", "for freshers"
@@ -699,17 +867,17 @@ async function fetchFromHimalayas() {
 /**
  * Query verified real opportunities from the application store and nationwide partners
  */
-function fetchFromVerifiedStore(targetLocation = '') {
+function fetchFromVerifiedStore(targetLocation = '', providedCoords = null) {
   try {
     const all = Opportunity.getAll() || [];
-    const nationwideListings = targetLocation ? getNationwidePartnerListingsForCity(targetLocation) : [];
+    const nationwideListings = targetLocation ? getNationwidePartnerListingsForCity(targetLocation, providedCoords) : [];
     const combined = [...(nationwideListings || []), ...(VERIFIED_PARTNER_LISTINGS || []), ...all];
     return combined
       .filter(o => o && o.sourceUrl && isValidJobUrl(o.sourceUrl) && o.sourceType !== 'demo')
       .map(o => normalizeJobData(o, o.source || 'Verified Partner Network'))
       .filter(Boolean);
   } catch {
-    const nationwideListings = targetLocation ? getNationwidePartnerListingsForCity(targetLocation) : [];
+    const nationwideListings = targetLocation ? getNationwidePartnerListingsForCity(targetLocation, providedCoords) : [];
     return [...(nationwideListings || []), ...(VERIFIED_PARTNER_LISTINGS || [])].map(o => normalizeJobData(o, o.source || 'Verified Partner Network')).filter(Boolean);
   }
 }
@@ -1163,13 +1331,47 @@ export function scoreAndRankJobs(jobs = [], parsedQuery = {}, userProfile = {}) 
       }
     }
 
+    // Determine Result Category (Section 16: Direct, Related, Broader)
+    let matchCategory = 'broader';
+    const titleLower = (job.title || '').toLowerCase();
+    const isDirectTitle = Boolean(
+      (parsedQuery.role && titleLower.includes(parsedQuery.role.toLowerCase())) ||
+      (parsedQuery.keyword && parsedQuery.keyword.length > 2 && titleLower.includes(parsedQuery.keyword.toLowerCase()))
+    );
+    const isDirectSector = Boolean(
+      parsedQuery.sector && job.sector && job.sector.toLowerCase().includes(parsedQuery.sector.toLowerCase())
+    );
+    const matchesRelatedRole = Boolean(
+      Array.isArray(parsedQuery.relatedRoles) &&
+      parsedQuery.relatedRoles.some(r => titleLower.includes(r.toLowerCase()))
+    );
+
+    if (isDirectTitle || (isDirectSector && finalScore >= 70)) {
+      matchCategory = 'direct';
+    } else if (matchesRelatedRole || finalScore >= 55) {
+      matchCategory = 'related';
+    }
+
+    // Verification Signals (Section 30: Transparent individual verification indicators)
+    const verificationSignals = {
+      originalSourceFound: Boolean(job.source && (job.sourceUrl || job.applyUrl)),
+      sourceName: job.source || 'Verified Partner Network',
+      sourceUrl: job.sourceUrl || job.applyUrl,
+      applicationLinkVerified: Boolean(job.applyUrl || job.jobUrl),
+      employerInfoAvailable: Boolean(job.company && job.company !== 'Unknown'),
+      locationAvailable: Boolean(job.location && !job.location.includes('not specified')),
+      recentPosting: Boolean(job.postedAt)
+    };
+
     scored.push({
       ...job,
       distanceKm,
       score: finalScore,
       matchScore: finalScore,
+      matchCategory,
       matchFactors: reasons.length > 0 ? reasons : ['Verified live opportunity matching search criteria'],
-      matchReasons: reasons.length > 0 ? reasons : ['Verified live opportunity matching search criteria']
+      matchReasons: reasons.length > 0 ? reasons : ['Verified live opportunity matching search criteria'],
+      verificationSignals
     });
   }
 
@@ -1211,10 +1413,15 @@ export async function getRealJobRecommendations({
 
     // 2. Fetch from legitimate live feeds and verified partner listings
     const targetLoc = parsed.location || location || profile?.city || '';
+    let targetCoords = null;
+    if (targetLoc && !/remote|online|wfh/i.test(targetLoc)) {
+      targetCoords = await resolveCoordinatesAsync({ city: targetLoc });
+    }
+
     const [arbeitnowJobs, himalayasJobs, storeJobs] = await Promise.all([
       fetchFromArbeitnow({ query: parsed.keyword }),
       fetchFromHimalayas(),
-      fetchFromVerifiedStore(targetLoc)
+      fetchFromVerifiedStore(targetLoc, targetCoords)
     ]);
 
     // Combine all genuine sources

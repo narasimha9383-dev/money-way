@@ -1624,12 +1624,12 @@ syncRealOpportunities().catch(err => {
  * Real verified partner portals (Swiggy, Zomato, Rapido, Zepto, Blinkit, Delhivery, etc.)
  * with zero invented links.
  */
-export function getNationwidePartnerListingsForCity(cityName) {
+export function getNationwidePartnerListingsForCity(cityName, providedCoords = null) {
   if (!cityName || typeof cityName !== 'string') return [];
   const cleanCity = cityName.trim();
   if (!cleanCity || /^(remote|online|wfh|work from home)$/i.test(cleanCity)) return [];
 
-  const coords = resolveCoordinates({ city: cleanCity });
+  const coords = providedCoords || resolveCoordinates({ city: cleanCity });
   const lat = coords?.lat || null;
   const lng = coords?.lng || null;
   const displayLoc = coords?.displayName || cleanCity;

@@ -148,7 +148,7 @@ export async function searchJobs(req, res) {
     // Step 3: Location / Coordinates matching (Section 8)
     const targetCoords = (isExplicitRemoteLoc || intent.isRemote)
       ? null
-      : resolveCoordinates({
+      : await resolveCoordinatesAsync({
           lat: lat ? Number(lat) : undefined,
           lng: lng ? Number(lng) : undefined,
           city: intent.location || city || location,
@@ -239,8 +239,24 @@ export async function searchJobs(req, res) {
       totalPages,
       jobs: paginated,
       intent,
+      queryAnalysis: {
+        originalQuery: rawQuery,
+        role: intent.role || intent.keyword || 'All Opportunities',
+        jobTitle: intent.jobTitle || intent.role || 'All Roles',
+        sector: intent.sector || 'All Sectors',
+        relatedRoles: intent.relatedRoles || [],
+        location: targetCoords?.displayName || intent.location || effectiveLocation || 'Any Location',
+        radiusKm: Number(radiusKm) || intent.radius_km || 25,
+        experience: intent.experience || experience || 'Any',
+        employmentType: intent.employmentType || employmentType || 'Any',
+        isRemote: intent.isRemote || remote === 'true',
+        directCount: jobs.filter(j => j.matchCategory === 'direct').length,
+        relatedCount: jobs.filter(j => j.matchCategory === 'related').length,
+        broaderCount: jobs.filter(j => j.matchCategory === 'broader').length
+      },
       sources: Array.from(new Set(jobs.map(j => j.source).filter(Boolean))),
       availableSectors: [
+        'Engineering',
         'Technology',
         'Delivery / Logistics',
         'Hospitality',

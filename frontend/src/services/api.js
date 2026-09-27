@@ -524,6 +524,8 @@ export async function reverseGeocodeApi(lat, lng) {
   return await apiFetch(`/jobs/reverse-geocode?${params.toString()}`);
 }
 
+
+
 export async function fetchOrganizationDetailsApi(query) {
   const params = new URLSearchParams({ q: query });
   return await apiFetch(`/jobs/organization/details?${params.toString()}`);

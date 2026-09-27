@@ -1,5 +1,3 @@
-// src/components/NearbyServicesSection.jsx
-import React, { useState, useEffect } from 'react';
 import { 
   MapPin, 
   Navigation, 
@@ -15,9 +13,11 @@ import {
   ExternalLink, 
   SlidersHorizontal,
   ChevronRight,
-  Info
+  Info,
+  Search,
+  RotateCw
 } from 'lucide-react';
-import { fetchNearbyServices } from '../services/api.js';
+import { fetchNearbyServices, geocodeLocationApi } from '../services/api.js';
 
 export default function NearbyServicesSection({
   userProfile,
@@ -53,10 +53,53 @@ export default function NearbyServicesSection({
 
   // Available cities for manual selection (Section 6)
   const availableCities = [
+    { city: 'Chirala', displayName: 'Chirala / Bapatla, AP', lat: 15.8309, lng: 80.3544, areas: ['Chirala Town', 'Bapatla', 'Ponnur', 'Repalle'] },
+    { city: 'Guntur', displayName: 'Guntur / Tenali Corridor, AP', lat: 16.3067, lng: 80.4365, areas: ['Vadlamudi', 'Tenali', 'Guntur City', 'Mangalagiri', 'Chebrolu'] },
+    { city: 'Vijayawada', displayName: 'Vijayawada / Amaravati, AP', lat: 16.5062, lng: 80.6480, areas: ['Benz Circle', 'Bhavanipuram', 'Gannavaram', 'Amaravati'] },
+    { city: 'Hyderabad', displayName: 'Hyderabad, Telangana', lat: 17.3850, lng: 78.4867, areas: ['Madhapur', 'Hitec City', 'Gachibowli', 'Kondapur', 'Kukatpally'] },
+    { city: 'Visakhapatnam', displayName: 'Visakhapatnam, AP', lat: 17.6868, lng: 83.2185, areas: ['Gajuwaka', 'MVP Colony', 'Madhurawada', 'Siripuram'] },
+    { city: 'Tirupati', displayName: 'Tirupati, AP', lat: 13.6288, lng: 79.4192, areas: ['Alipiri', 'Renigunta', 'Chandragiri', 'Bairagipatteda'] },
     { city: 'Bengaluru', displayName: 'Bengaluru, Karnataka', lat: 12.9716, lng: 77.5946, areas: ['Indiranagar', 'Koramangala', 'Whitefield', 'HSR Layout', 'Jayanagar'] },
     { city: 'Mumbai', displayName: 'Mumbai, Maharashtra', lat: 19.0760, lng: 72.8777, areas: ['Andheri', 'Bandra', 'Powai'] },
     { city: 'New Delhi', displayName: 'New Delhi, Delhi NCR', lat: 28.6139, lng: 77.2090, areas: ['South Delhi', 'Connaught Place'] }
   ];
+
+  // Custom location search input state
+  const [customLocationInput, setCustomLocationInput] = useState('');
+  const [customLocationLoading, setCustomLocationLoading] = useState(false);
+  const [customLocationError, setCustomLocationError] = useState(null);
+
+  const handleSearchCustomLocation = async (e) => {
+    if (e) e.preventDefault();
+    const query = customLocationInput.trim();
+    if (!query) return;
+    setCustomLocationLoading(true);
+    setCustomLocationError(null);
+    try {
+      const res = await geocodeLocationApi(query);
+      if (res?.success && res.location) {
+        const loc = {
+          city: res.location.placeName || query,
+          area: res.location.district || '',
+          lat: res.location.lat,
+          lng: res.location.lng,
+          displayName: res.location.displayName || query
+        };
+        setUserLocation(loc);
+        setPermissionState('manual');
+        localStorage.setItem('incomepath_location_perm', 'manual');
+        localStorage.setItem('incomepath_user_loc', JSON.stringify(loc));
+        setShowLocationModal(false);
+        setCustomLocationInput('');
+      } else {
+        setCustomLocationError('Location not found. Please try another place or pincode.');
+      }
+    } catch {
+      setCustomLocationError('Could not resolve location. Please try again.');
+    } finally {
+      setCustomLocationLoading(false);
+    }
+  };
 
   // Fetch nearby services when location, radius, or category changes
   useEffect(() => {
@@ -529,10 +572,44 @@ export default function NearbyServicesSection({
             </div>
 
             <p className="text-xs text-slate-300">
-              Select your city and locality to view verified local opportunities near you.
+              Search or type ANY town, village, mandal, or pincode in India:
             </p>
 
-            <div className="space-y-3">
+            {/* Custom Location Search Input */}
+            <form onSubmit={handleSearchCustomLocation} className="space-y-1.5">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customLocationInput}
+                  onChange={(e) => setCustomLocationInput(e.target.value)}
+                  placeholder="e.g. Chirala, Bapatla, Vadlamudi, 523155..."
+                  className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 outline-none focus:border-teal-400"
+                />
+                <button
+                  type="submit"
+                  disabled={customLocationLoading || !customLocationInput.trim()}
+                  className="px-3.5 py-2 rounded-xl bg-teal-400 hover:bg-teal-300 text-slate-950 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {customLocationLoading ? (
+                    <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Search className="w-3.5 h-3.5" />
+                  )}
+                  <span>Set</span>
+                </button>
+              </div>
+              {customLocationError && (
+                <p className="text-[11px] text-rose-400">{customLocationError}</p>
+              )}
+            </form>
+
+            <div className="pt-1">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block pb-2">
+                Or select regional hub:
+              </span>
+            </div>
+
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
               {availableCities.map((c) => (
                 <div key={c.city} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
                   <div className="flex items-center justify-between">

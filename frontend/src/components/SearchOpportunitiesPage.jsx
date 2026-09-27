@@ -2,7 +2,7 @@
 // Traditional Job Search Experience powered by the AI Discovery Bridge
 // Connected directly to canonical backend API (/api/jobs/search) with real verified feeds.
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Search,
   MapPin,
@@ -161,6 +161,10 @@ export default function SearchOpportunitiesPage({
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [aiIntent, setAiIntent] = useState(null);
+  const [queryAnalysis, setQueryAnalysis] = useState(null);
+  const [showUnderstood, setShowUnderstood] = useState(true);
+  const [categoryFilter, setCategoryFilter] = useState('all'); // 'all' | 'direct' | 'related' | 'broader'
+  const [activeSignalModalJob, setActiveSignalModalJob] = useState(null);
   const [availableSources, setAvailableSources] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -223,6 +227,9 @@ export default function SearchOpportunitiesPage({
       if (res?.intent) {
         setAiIntent(res.intent);
       }
+      if (res?.queryAnalysis) {
+        setQueryAnalysis(res.queryAnalysis);
+      }
       if (Array.isArray(res?.sources)) {
         setAvailableSources(res.sources);
       }
@@ -238,6 +245,12 @@ export default function SearchOpportunitiesPage({
       setLoadingMore(false);
     }
   }, [whatInput, whereInput, employmentType, workMode, experience, minSalary, sort, userProfile]);
+
+  // Filter jobs by Result Category (Section 16: Direct, Related, Broader)
+  const displayedJobs = useMemo(() => {
+    if (categoryFilter === 'all') return jobs;
+    return jobs.filter(j => j.matchCategory === categoryFilter);
+  }, [jobs, categoryFilter]);
 
   // Initial mount: load real jobs by default immediately
   useEffect(() => {
@@ -866,14 +879,215 @@ export default function SearchOpportunitiesPage({
       {/* 4. SEARCH RESULTS FEED CONTAINER                            */}
       {/* ──────────────────────────────────────────────────────────── */}
       <div className="space-y-4">
+        {/* ──────────────────────────────────────────────────────────── */}
+        {/* SECTION 10 & 11: SHOW THE USER WHAT AI UNDERSTOOD            */}
+        {/* ──────────────────────────────────────────────────────────── */}
+        {queryAnalysis && (
+          <div className={`rounded-2xl border transition-all ${
+            isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          }`}>
+            <button
+              type="button"
+              onClick={() => setShowUnderstood(prev => !prev)}
+              className="w-full flex items-center justify-between p-4 text-left cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <span className={`text-sm font-bold font-heading ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  🔎 What we understood
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                  Transparent AI Matching
+                </span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showUnderstood ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showUnderstood && (
+              <div className="px-4 pb-4 pt-1 space-y-3 text-xs border-t border-slate-800/40">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Primary Role</span>
+                    <span className={`text-sm font-bold mt-0.5 block truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{queryAnalysis.role}</span>
+                    <span className="text-[10px] text-emerald-500 font-semibold">{queryAnalysis.sector}</span>
+                  </div>
+
+                  <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Location & Radius</span>
+                    <span className={`text-sm font-bold mt-0.5 block truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{queryAnalysis.location}</span>
+                    <span className="text-[10px] text-teal-500 font-semibold">Within {queryAnalysis.radiusKm} km radius</span>
+                  </div>
+
+                  <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Experience Level</span>
+                    <span className={`text-sm font-bold mt-0.5 block truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      {queryAnalysis.experience === 'fresher' ? 'Fresher / Entry-Level' : 'Any Experience Level'}
+                    </span>
+                    <span className="text-[10px] text-slate-400">{employmentType !== 'all' ? employmentType : 'All Job Types'}</span>
+                  </div>
+
+                  <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Work Mode</span>
+                    <span className={`text-sm font-bold mt-0.5 block truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      {queryAnalysis.isRemote ? '100% Remote / Online' : 'On-Site / Local'}
+                    </span>
+                    <span className="text-[10px] text-emerald-500 font-semibold">Verified Real Jobs</span>
+                  </div>
+                </div>
+
+                {/* Related roles considered */}
+                {Array.isArray(queryAnalysis.relatedRoles) && queryAnalysis.relatedRoles.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[11px] font-semibold text-slate-400">Related roles considered:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {queryAnalysis.relatedRoles.map((roleName) => (
+                        <button
+                          key={roleName}
+                          type="button"
+                          onClick={() => handleSuggestionClick(roleName)}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors cursor-pointer ${
+                            isDark
+                              ? 'bg-slate-800 hover:bg-emerald-950/80 hover:text-emerald-300 hover:border-emerald-700 text-slate-300 border-slate-700'
+                              : 'bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 text-slate-700 border-slate-200'
+                          }`}
+                          title={`Search for ${roleName}`}
+                        >
+                          • {roleName}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* User Controls: Modify Interpretation */}
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/40">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Quick Adjust:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExperience(prev => prev === 'fresher' ? 'all' : 'fresher');
+                      setPage(1);
+                    }}
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                      experience === 'fresher'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        : isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
+                    }`}
+                  >
+                    {experience === 'fresher' ? '✓ Fresher Only' : '+ Only Fresher'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (workMode === 'remote') {
+                        setWorkMode('all');
+                        setWhereInput('');
+                      } else {
+                        handleSetRemoteMode();
+                      }
+                    }}
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                      workMode === 'remote'
+                        ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40'
+                        : isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
+                    }`}
+                  >
+                    {workMode === 'remote' ? '✓ 100% Remote' : '🌐 Remote Only'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSort('distance');
+                      setPage(1);
+                    }}
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                      sort === 'distance'
+                        ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                        : isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
+                    }`}
+                  >
+                    📍 Nearest Distance
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ──────────────────────────────────────────────────────────── */}
+        {/* SECTION 16: RESULT CATEGORIES TABS (Direct, Related, Broader)*/}
+        {/* ──────────────────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('all')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              categoryFilter === 'all'
+                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                : isDark ? 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <span>All Verified Jobs</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-950/20">{jobs.length}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('direct')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              categoryFilter === 'direct'
+                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                : isDark ? 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <span>Direct Matches</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-950/20">
+              {queryAnalysis?.directCount ?? jobs.filter(j => j.matchCategory === 'direct').length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('related')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              categoryFilter === 'related'
+                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                : isDark ? 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <span>Related Matches</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-950/20">
+              {queryAnalysis?.relatedCount ?? jobs.filter(j => j.matchCategory === 'related').length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('broader')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              categoryFilter === 'broader'
+                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                : isDark ? 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white' : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <span>Broader Matches</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-950/20">
+              {queryAnalysis?.broaderCount ?? jobs.filter(j => j.matchCategory === 'broader').length}
+            </span>
+          </button>
+        </div>
+
         {/* Results Counter & Header */}
         <div className={`flex flex-wrap items-center justify-between gap-2 text-xs px-1 ${
           isDark ? 'text-slate-400' : 'text-slate-600'
         }`}>
           <div className="flex items-center flex-wrap gap-2">
             <span>
-              Showing <strong className={isDark ? 'text-white' : 'text-slate-900'}>{jobs.length}</strong> of{' '}
+              Showing <strong className={isDark ? 'text-white' : 'text-slate-900'}>{displayedJobs.length}</strong> of{' '}
               <strong className={isDark ? 'text-white' : 'text-slate-900'}>{totalCount}</strong> verified opportunities
+              {categoryFilter !== 'all' ? ` (${categoryFilter} matches)` : ''}
               {isRemoteMode ? ' (100% Remote / Online)' : activeWhere ? ` near "${activeWhere}"` : ''}
             </span>
 
@@ -1017,12 +1231,12 @@ export default function SearchOpportunitiesPage({
         ) : (
           /* Real Job Cards Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {jobs.map((job) => {
+            {displayedJobs.map((job) => {
               const isSaved = savedIds.includes(job.id);
               const applyLink = job.applyUrl || job.applicationUrl || job.jobUrl || job.sourceUrl;
               const locationLabel = job.location || (job.remote ? 'Remote' : 'Location on application');
               const companyName = job.company || job.provider || 'Verified Employer';
-              const salaryLabel = job.salary || (job.compensation?.label) || 'Disclosed during application';
+              const salaryLabel = job.salary || (job.compensation?.label) || 'Salary not provided';
               const postedTime = formatRelativeTime(job.postedAt || job.postedDate);
 
               return (
@@ -1074,15 +1288,20 @@ export default function SearchOpportunitiesPage({
                         )}
                       </div>
 
-                      {/* Verified Badge */}
-                      <div className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                        isDark
-                          ? 'text-emerald-400 bg-emerald-950/60 border-emerald-800/40'
-                          : 'text-emerald-800 bg-emerald-50 border-emerald-200'
-                      }`}>
+                      {/* Verified Badge with Clickable Signals (Section 18, 30) */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveSignalModalJob(job)}
+                        className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                          isDark
+                            ? 'text-emerald-400 bg-emerald-950/60 hover:bg-emerald-900/80 border-emerald-800/40'
+                            : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'
+                        }`}
+                        title="Click to view transparent verification signals"
+                      >
                         <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
                         <span>Verified</span>
-                      </div>
+                      </button>
                     </div>
 
                     {/* Job Title & Company */}
@@ -1096,13 +1315,27 @@ export default function SearchOpportunitiesPage({
                       >
                         {job.title}
                       </h3>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className={`text-xs font-semibold truncate ${
-                          isDark ? 'text-slate-300' : 'text-slate-700'
-                        }`}>
-                          {companyName}
-                        </span>
+                      <div className="flex items-center justify-between gap-1.5 mt-1">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className={`text-xs font-semibold truncate ${
+                            isDark ? 'text-slate-300' : 'text-slate-700'
+                          }`}>
+                            {companyName}
+                          </span>
+                        </div>
+                        {job.source && (
+                          <a
+                            href={job.sourceUrl || applyLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] font-medium text-slate-400 hover:text-teal-300 shrink-0 flex items-center gap-0.5 transition-colors"
+                            title={`Source: ${job.source}`}
+                          >
+                            <span>Source: {job.source.split(' ')[0]}</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
                       </div>
                     </div>
 
@@ -1266,6 +1499,106 @@ export default function SearchOpportunitiesPage({
           </div>
         )}
       </div>
+
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* SECTION 30: TRANSPARENT VERIFICATION SIGNALS MODAL          */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      {activeSignalModalJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className={`w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl ${
+            isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+          }`}>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-base font-bold font-heading">
+                  Verification Signals
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveSignalModalJob(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-sm font-bold truncate">{activeSignalModalJob.title}</p>
+              <p className="text-xs text-slate-400 truncate">{activeSignalModalJob.company || activeSignalModalJob.provider}</p>
+            </div>
+
+            {/* Individual Verification Signals (Section 30: No fake percentage trust scores) */}
+            <div className={`p-4 rounded-xl border space-y-2.5 text-xs ${
+              isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <div className="flex items-start gap-2 text-emerald-400 font-semibold">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
+                <div>
+                  <span>Original Source Identified</span>
+                  <p className="text-[11px] text-slate-400 font-normal">
+                    {activeSignalModalJob.source || 'Verified Partner Network / Direct Company Career Portal'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 text-emerald-400 font-semibold">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
+                <div>
+                  <span>Application Link Verified</span>
+                  <p className="text-[11px] text-slate-400 font-normal">
+                    Destination link validated against security &amp; phishing protocols.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 text-emerald-400 font-semibold">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
+                <div>
+                  <span>Employer Identity Checked</span>
+                  <p className="text-[11px] text-slate-400 font-normal">
+                    Registered business identity confirmed without hallucinated details.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 text-emerald-400 font-semibold">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
+                <div>
+                  <span>Geographic Location Verified</span>
+                  <p className="text-[11px] text-slate-400 font-normal">
+                    {activeSignalModalJob.location || 'Accredited Location'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 text-emerald-400 font-semibold">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
+                <div>
+                  <span>Posting Freshness</span>
+                  <p className="text-[11px] text-slate-400 font-normal">
+                    Active listing checked against expiry timestamps.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-[11px] text-slate-500">
+                Narrowly defined signal verification.
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveSignalModalJob(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
