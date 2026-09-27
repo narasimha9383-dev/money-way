@@ -1,6 +1,26 @@
 // src/services/api.js
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+// Determine the API backend root URL:
+// 1. If explicit VITE_API_URL is set, use that with /api
+// 2. If explicit VITE_API_BASE is set to a full URL (http...), use that
+// 3. If running on Vercel or any public domain (not localhost), use Render backend directly
+// 4. Otherwise fallback to local proxy /api
+const getApiBase = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return `${envUrl.replace(/\/$/, '')}/api`;
+  }
+  const envBase = import.meta.env.VITE_API_BASE;
+  if (envBase && envBase.startsWith('http')) {
+    return envBase;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+    return 'https://money-way-u2ce.onrender.com/api';
+  }
+  return envBase || '/api';
+};
+
+const API_BASE = getApiBase();
 const TOKEN_KEY = 'incomepath_auth_token';
 
 /**
