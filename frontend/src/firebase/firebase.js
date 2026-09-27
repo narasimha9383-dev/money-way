@@ -71,7 +71,8 @@ export async function signInWithGooglePopup() {
       throw error;
     }
     if (err.code === 'auth/unauthorized-domain') {
-      const error = new Error('This domain is not authorized in Firebase Console. Please add localhost to Authorized Domains.');
+      const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'this domain';
+      const error = new Error(`Domain "${currentHost}" is not authorized in Firebase Console. Please add "${currentHost}" to Authentication -> Settings -> Authorized Domains.`);
       error.code = 'UNAUTHORIZED_DOMAIN';
       throw error;
     }
