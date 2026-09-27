@@ -32,7 +32,21 @@ export const CITY_COORDINATES = {
   'amaravati': { lat: 16.5131, lng: 80.5165, displayName: 'Amaravati, Andhra Pradesh', country: 'India' },
   'visakhapatnam': { lat: 17.6868, lng: 83.2185, displayName: 'Visakhapatnam, Andhra Pradesh', country: 'India' },
   'vizag': { lat: 17.6868, lng: 83.2185, displayName: 'Visakhapatnam, Andhra Pradesh', country: 'India' },
-  'tirupati': { lat: 13.6288, lng: 79.4192, displayName: 'Tirupati, Andhra Pradesh', country: 'India' }
+  'tirupati': { lat: 13.6288, lng: 79.4192, displayName: 'Tirupati, Andhra Pradesh', country: 'India' },
+  'lucknow': { lat: 26.8467, lng: 80.9462, displayName: 'Lucknow, Uttar Pradesh', country: 'India' },
+  'chandigarh': { lat: 30.7333, lng: 76.7794, displayName: 'Chandigarh', country: 'India' },
+  'kochi': { lat: 9.9312, lng: 76.2673, displayName: 'Kochi, Kerala', country: 'India' },
+  'coimbatore': { lat: 11.0168, lng: 76.9558, displayName: 'Coimbatore, Tamil Nadu', country: 'India' },
+  'indore': { lat: 22.7196, lng: 75.8577, displayName: 'Indore, Madhya Pradesh', country: 'India' },
+  'nagpur': { lat: 21.1458, lng: 79.0882, displayName: 'Nagpur, Maharashtra', country: 'India' },
+  'bhopal': { lat: 23.2599, lng: 77.4126, displayName: 'Bhopal, Madhya Pradesh', country: 'India' },
+  'patna': { lat: 25.5941, lng: 85.1376, displayName: 'Patna, Bihar', country: 'India' },
+  'surat': { lat: 21.1702, lng: 72.8311, displayName: 'Surat, Gujarat', country: 'India' },
+  'kurnool': { lat: 15.8281, lng: 78.0373, displayName: 'Kurnool, Andhra Pradesh', country: 'India' },
+  'nellore': { lat: 14.4426, lng: 79.9865, displayName: 'Nellore, Andhra Pradesh', country: 'India' },
+  'rajahmundry': { lat: 17.0005, lng: 81.8040, displayName: 'Rajahmundry, Andhra Pradesh', country: 'India' },
+  'kakinada': { lat: 16.9891, lng: 82.2475, displayName: 'Kakinada, Andhra Pradesh', country: 'India' },
+  'warangal': { lat: 17.9689, lng: 79.5941, displayName: 'Warangal, Telangana', country: 'India' }
 };
 
 export const LOCALITY_COORDINATES = {
@@ -301,9 +315,20 @@ export function resolveCoordinates({ lat, lng, city, area, pincode } = {}) {
         displayName: CITY_COORDINATES[cityKey].displayName
       };
     }
+    // Check if known city match exists within city string (e.g. "Bangalore, Karnataka" -> Bangalore)
+    for (const [key, c] of Object.entries(CITY_COORDINATES)) {
+      if (cityKey.includes(key) || new RegExp(`\\b${key}\\b`, 'i').test(cityKey)) {
+        return {
+          lat: c.lat,
+          lng: c.lng,
+          source: 'city',
+          displayName: c.displayName
+        };
+      }
+    }
     // Check if locality match exists within city string
     for (const [key, loc] of Object.entries(LOCALITY_COORDINATES)) {
-      if (cityKey.includes(key)) {
+      if (cityKey.includes(key) || new RegExp(`\\b${key}\\b`, 'i').test(cityKey)) {
         return {
           lat: loc.lat,
           lng: loc.lng,

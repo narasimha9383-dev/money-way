@@ -192,8 +192,18 @@ export async function searchJobs(req, res) {
     } else if (sort === 'newest') {
       jobs.sort((a, b) => new Date(b.postedAt || b.postedDate || 0) - new Date(a.postedAt || a.postedDate || 0));
     } else {
-      // Relevance ranking
-      jobs.sort((a, b) => (b.matchScore || b.score || 0) - (a.matchScore || a.score || 0));
+      // Relevance ranking: Prioritize local in-person opportunities in target area first, then by match score
+      if (targetCoords) {
+        jobs.sort((a, b) => {
+          const aIsLocal = a.distanceKm !== null && a.distanceKm <= 50;
+          const bIsLocal = b.distanceKm !== null && b.distanceKm <= 50;
+          if (aIsLocal && !bIsLocal) return -1;
+          if (!aIsLocal && bIsLocal) return 1;
+          return (b.matchScore || b.score || 0) - (a.matchScore || a.score || 0);
+        });
+      } else {
+        jobs.sort((a, b) => (b.matchScore || b.score || 0) - (a.matchScore || a.score || 0));
+      }
     }
 
     // Pagination

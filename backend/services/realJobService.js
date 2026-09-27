@@ -10,7 +10,7 @@
 import { isValidJobUrl, matchesExpectedSource, verifyJobUrlReachability } from './verificationService.js';
 import { Opportunity } from '../models/Opportunity.js';
 import { getAllOpportunities } from '../data/store.js';
-import { VERIFIED_PARTNER_LISTINGS } from './opportunityFeedService.js';
+import { VERIFIED_PARTNER_LISTINGS, getNationwidePartnerListingsForCity } from './opportunityFeedService.js';
 import { getCoordinatesForLocation, calculateHaversineDistance, resolveCoordinates } from './locationService.js';
 
 // Cache for external API queries (15-minute TTL)
@@ -81,7 +81,7 @@ export function classifyJobUrl(url) {
  */
 function isGenericJobSiteUrl(url) {
   const classification = classifyJobUrl(url);
-  return !classification.isDirectApply;
+  return classification.type === 'invalid' || classification.type === 'company_website' || classification.type === 'aggregator_directory';
 }
 
 /**
@@ -697,18 +697,20 @@ async function fetchFromHimalayas() {
 }
 
 /**
- * Query verified real opportunities from the application store
+ * Query verified real opportunities from the application store and nationwide partners
  */
-function fetchFromVerifiedStore() {
+function fetchFromVerifiedStore(targetLocation = '') {
   try {
     const all = Opportunity.getAll() || [];
-    const combined = [...(VERIFIED_PARTNER_LISTINGS || []), ...all];
+    const nationwideListings = targetLocation ? getNationwidePartnerListingsForCity(targetLocation) : [];
+    const combined = [...(nationwideListings || []), ...(VERIFIED_PARTNER_LISTINGS || []), ...all];
     return combined
       .filter(o => o && o.sourceUrl && isValidJobUrl(o.sourceUrl) && o.sourceType !== 'demo')
       .map(o => normalizeJobData(o, o.source || 'Verified Partner Network'))
       .filter(Boolean);
   } catch {
-    return (VERIFIED_PARTNER_LISTINGS || []).map(o => normalizeJobData(o, o.source || 'Verified Partner Network')).filter(Boolean);
+    const nationwideListings = targetLocation ? getNationwidePartnerListingsForCity(targetLocation) : [];
+    return [...(nationwideListings || []), ...(VERIFIED_PARTNER_LISTINGS || [])].map(o => normalizeJobData(o, o.source || 'Verified Partner Network')).filter(Boolean);
   }
 }
 
@@ -755,6 +757,10 @@ export async function verifyJobListings(jobs = []) {
     if (!job) return false;
     const bestUrl = job.applyUrl || job.jobUrl || job.sourceUrl;
     if (!isValidJobUrl(bestUrl)) return false;
+    // Guaranteed preservation for verified partners and company career portals
+    if (job.source?.includes('Partner') || job.source?.includes('Official') || job.verified || job.exactApplicationLinkAvailable) {
+      return true;
+    }
     if (isGenericJobSiteUrl(bestUrl)) return false;
     return true;
   });
@@ -1010,21 +1016,48 @@ export function scoreAndRankJobs(jobs = [], parsedQuery = {}, userProfile = {}) 
       reasons.push(`Relevant industry domain (${job.category})`);
     }
 
-    // 3. Location Matching (up to 25 pts) — CRITICAL (Section 9)
+    // 3. Location Matching (up to 35 pts) — CRITICAL (Section 9)
     let isLocationMismatch = false;
     if (qLocation) {
       const distToUser = (userCoords && job.latitude && job.longitude)
         ? calculateHaversineDistance(userCoords.lat, userCoords.lng, job.latitude, job.longitude)
         : null;
 
-      if (jobLoc.includes(qLocation)) {
-        score += 25;
-        reasons.push(`Located in ${parsedQuery.location || userProfile.city}`);
-      } else if (distToUser !== null && distToUser <= 25) {
-        score += 20;
-        reasons.push(`Nearby location (${distToUser} km away)`);
-      } else if (job.remote && !jobLoc.includes('germany') && !jobLoc.includes('munich') && !jobLoc.includes('berlin') && !jobLoc.includes('united states') && !jobTitle.includes('m/w/d')) {
-        score += 15;
+      const qLocClean = qLocation.toLowerCase().trim();
+      const jobLocClean = jobLoc.toLowerCase().trim();
+
+      const isExactOrSubstring = jobLocClean.includes(qLocClean) || qLocClean.includes(jobLocClean);
+      const isAliasMatch = (
+        (qLocClean.includes('bangalore') && jobLocClean.includes('bengaluru')) ||
+        (qLocClean.includes('bengaluru') && jobLocClean.includes('bangalore')) ||
+        (qLocClean.includes('delhi') && (jobLocClean.includes('noida') || jobLocClean.includes('gurgaon') || jobLocClean.includes('gurugram'))) ||
+        (qLocClean.includes('hyderabad') && (jobLocClean.includes('secunderabad') || jobLocClean.includes('madhapur') || jobLocClean.includes('hitec') || jobLocClean.includes('gachibowli') || jobLocClean.includes('kukatpally') || jobLocClean.includes('kondapur'))) ||
+        (qLocClean.includes('guntur') && (jobLocClean.includes('vadlamudi') || jobLocClean.includes('tenali') || jobLocClean.includes('mangalagiri'))) ||
+        (qLocClean.includes('tenali') && (jobLocClean.includes('vadlamudi') || jobLocClean.includes('guntur'))) ||
+        (qLocClean.includes('vadlamudi') && (jobLocClean.includes('tenali') || jobLocClean.includes('guntur'))) ||
+        (qLocClean.includes('mumbai') && (jobLocClean.includes('navi mumbai') || jobLocClean.includes('thane') || jobLocClean.includes('andheri') || jobLocClean.includes('bandra') || jobLocClean.includes('powai')))
+      );
+
+      const isForeignLocation = [
+        'germany', 'deutschland', 'munich', 'münchen', 'berlin', 'hamburg', 'cologne', 'köln',
+        'frankfurt', 'düsseldorf', 'dresden', 'leipzig', 'aachen', 'united states', 'usa',
+        'canada', 'uk', 'poland', 'spain', 'romania', 'slovakia', 'italy', 'philippines',
+        'denmark', 'netherlands', 'norway', 'australia', 'mexico', 'france', 'japan', 'turkey',
+        'vietnam', 'bulgaria', 'china', 'ukraine', 'austria', 'belgium', 'czechia', 'ireland',
+        'emea', 'latam', 'apac', 'new zealand'
+      ].some(c => jobLocClean.includes(c));
+
+      if (isExactOrSubstring || isAliasMatch) {
+        score += 35;
+        reasons.unshift(`Located in ${parsedQuery.location || userProfile.city}`);
+      } else if (distToUser !== null && distToUser <= 50) {
+        // Within 50km regional/commute radius
+        const distScore = Math.max(15, 30 - Math.round(distToUser * 0.3));
+        score += distScore;
+        reasons.unshift(`Nearby location (${distToUser} km away)`);
+      } else if (job.remote && !isForeignLocation && !jobTitle.includes('m/w/d')) {
+        // Genuine remote job accessible in India, but given lower preference than direct local matches
+        score += 10;
         reasons.push('Remote opportunity accessible anywhere');
       } else {
         isLocationMismatch = true;
@@ -1177,10 +1210,11 @@ export async function getRealJobRecommendations({
     }
 
     // 2. Fetch from legitimate live feeds and verified partner listings
+    const targetLoc = parsed.location || location || profile?.city || '';
     const [arbeitnowJobs, himalayasJobs, storeJobs] = await Promise.all([
       fetchFromArbeitnow({ query: parsed.keyword }),
       fetchFromHimalayas(),
-      fetchFromVerifiedStore()
+      fetchFromVerifiedStore(targetLoc)
     ]);
 
     // Combine all genuine sources

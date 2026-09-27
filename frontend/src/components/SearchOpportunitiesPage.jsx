@@ -171,7 +171,8 @@ export default function SearchOpportunitiesPage({
 
   // Helper to determine if remote / online mode is active (bulletproof against non-strings)
   const safeWhereStr = safeTrim(whereInput);
-  const isRemoteMode = workMode === 'remote' || /^(remote|online|wfh|work from home)$/i.test(safeWhereStr);
+  const isWhereRemoteKeyword = /^(remote|online|wfh|work from home)$/i.test(safeWhereStr);
+  const isRemoteMode = isWhereRemoteKeyword || (workMode === 'remote' && !safeWhereStr);
 
   // Main search executor connecting to Canonical Job API (/api/jobs/search)
   const performSearch = useCallback(async ({
@@ -191,7 +192,8 @@ export default function SearchOpportunitiesPage({
     try {
       const cleanWhat = safeTrim(targetWhat);
       const cleanWhere = safeTrim(targetWhere);
-      const isRemote = targetWorkMode === 'remote' || /^(remote|online|wfh|work from home)$/i.test(cleanWhere);
+      const isExplicitRemote = /^(remote|online|wfh|work from home)$/i.test(cleanWhere);
+      const isRemote = isExplicitRemote || (targetWorkMode === 'remote' && !cleanWhere);
       const isFullOnsite = targetWorkMode === 'onsite';
 
       const params = {
