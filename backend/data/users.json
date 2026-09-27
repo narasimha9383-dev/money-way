@@ -1,0 +1,1368 @@
+[
+  {
+    "id": "usr_admin_default",
+    "name": "System Administrator",
+    "email": "admin@incomepath.ai",
+    "passwordHash": "$2b$10$da6Y7MHuW9myZ6uITWJ4RObrYdhGkox6calRXuldJIox9Ow.SgRZa",
+    "googleId": null,
+    "provider": "email",
+    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+    "role": "admin",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": true,
+      "availableTime": "4+ hours/day",
+      "budget": "₹5,000–₹25,000",
+      "skills": [
+        "Management",
+        "Security",
+        "Review"
+      ],
+      "location": [
+        "Online / Remote"
+      ],
+      "equipment": [
+        "Laptop",
+        "Internet connection"
+      ]
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T12:18:39.418Z",
+    "updatedAt": "2026-09-27T09:22:04.503Z",
+    "lastLoginAt": "2026-09-27T09:22:04.503Z"
+  },
+  {
+    "id": "usr_demo_user",
+    "name": "Alex Kumar",
+    "email": "user@incomepath.ai",
+    "passwordHash": "$2b$10$aXJfeiYNkjsWh.5mDOzz5ewrQ/nD0x5npWZFxJptL3LHb9be2Ogvi",
+    "googleId": null,
+    "provider": "email",
+    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev",
+      "remote-customer-support"
+    ],
+    "profileData": {
+      "isProfileCompleted": true,
+      "availableTime": "1–2 hours/day",
+      "budget": "₹0",
+      "skills": [
+        "JavaScript",
+        "Writing"
+      ],
+      "location": [
+        "Online / Remote"
+      ],
+      "equipment": [
+        "Laptop",
+        "Internet connection"
+      ]
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T12:18:39.512Z",
+    "updatedAt": "2026-09-25T12:28:50.781Z",
+    "lastLoginAt": "2026-09-25T12:28:50.781Z"
+  },
+  {
+    "id": "usr_1790338719905_8pem0sb",
+    "name": "Test Explorer",
+    "email": "testuser_1790338719791@example.com",
+    "passwordHash": "$2b$10$08vx0SXcWL/PEniwOcSGRuV0ic6tXRHl9Oge3pmJTPdxQ3Vr.4FFK",
+    "googleId": null,
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": false,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T12:18:39.905Z",
+    "updatedAt": "2026-09-25T12:18:40.159Z",
+    "lastLoginAt": "2026-09-25T12:18:40.078Z"
+  },
+  {
+    "id": "usr_1790338720163_569kgv2",
+    "name": "Google Explorer",
+    "email": "google_tester@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_9988",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T12:18:40.163Z",
+    "updatedAt": "2026-09-25T13:12:47.415Z",
+    "lastLoginAt": "2026-09-25T13:12:47.415Z"
+  },
+  {
+    "id": "usr_1790339114491_mdkm8df",
+    "name": "Test Explorer",
+    "email": "testuser_1790339114417@example.com",
+    "passwordHash": "$2b$10$eeaSsNWOdJBOM1apYyD2MOa9ovSYqTnktAP.Ea0hre61Q9BjU0myO",
+    "googleId": null,
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": false,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T12:25:14.491Z",
+    "updatedAt": "2026-09-25T12:25:14.720Z",
+    "lastLoginAt": "2026-09-25T12:25:14.638Z"
+  },
+  {
+    "id": "usr_1790339382961_2u09w6w",
+    "name": "valeti narasimha naidu",
+    "email": "nandubram452@gmail.com",
+    "passwordHash": "$2b$10$E74CaBlJeG.OVqOl6Dl5sOjbexqOy.JJIBFO7NsZ/jwQjm37ImE02",
+    "googleId": "oNAlkMNyhsRhaDvBzm0s56wFMgA2",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=valeti%20narasimha%20naidu",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "availableTime": "2–4 hours/day",
+      "availabilitySlot": "Night",
+      "location": [
+        "Online / Remote"
+      ],
+      "transportation": "Not required",
+      "budget": "₹0",
+      "skills": [
+        "Content Creation",
+        "Photography",
+        "Graphic Design",
+        "Drawing",
+        "Fitness"
+      ],
+      "experienceLevel": "Some experience",
+      "willingToLearn": false,
+      "equipment": [
+        "Smartphone",
+        "Internet connection",
+        "Vehicle",
+        "Camera",
+        "Desktop"
+      ],
+      "workPersonality": [
+        "Technical work",
+        "Working alone",
+        "Working with people"
+      ],
+      "incomeGoal": "Side income",
+      "country": "India"
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T12:29:42.961Z",
+    "updatedAt": "2026-09-25T16:47:50.290Z",
+    "lastLoginAt": "2026-09-25T16:47:50.290Z",
+    "firebaseUid": "oNAlkMNyhsRhaDvBzm0s56wFMgA2"
+  },
+  {
+    "id": "usr_1790339847996_8sjllsj",
+    "name": "Google Verified Explorer",
+    "email": "google.explorer@incomepath.ai",
+    "passwordHash": null,
+    "googleId": "google_uid_dev_9988",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Verified%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T12:37:27.996Z",
+    "updatedAt": "2026-09-25T12:37:38.137Z",
+    "lastLoginAt": "2026-09-25T12:37:38.137Z"
+  },
+  {
+    "id": "usr_1790339971777_630ils6",
+    "name": "Test Explorer",
+    "email": "testuser_1790339971689@example.com",
+    "passwordHash": "$2b$10$GFbi7QadMylq2TsuEz5/cOvH6ROxF8byWyga2LLbQIjhCCizAnhgC",
+    "googleId": null,
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": false,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T12:39:31.777Z",
+    "updatedAt": "2026-09-25T12:39:31.971Z",
+    "lastLoginAt": "2026-09-25T12:39:31.899Z"
+  },
+  {
+    "id": "usr_1790341928647_4vppy7b",
+    "name": "Test Explorer",
+    "email": "testuser_1790341928579@example.com",
+    "passwordHash": "$2b$10$VUkInDtv6.GOHULlYo.oYezFb6Nt1fB24gbn3xXTLjQVy0Lx6gkiu",
+    "googleId": null,
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": false,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:12:08.647Z",
+    "updatedAt": "2026-09-25T13:12:08.845Z",
+    "lastLoginAt": "2026-09-25T13:12:08.772Z"
+  },
+  {
+    "id": "usr_1790341967214_wtktyj3",
+    "name": "Test Explorer",
+    "email": "testuser_1790341967148@example.com",
+    "passwordHash": "$2b$10$k67niWZf4JkZDrowH4DKqOF70E3hRdXkAkJgiS7TiVHbvmoi4J3Au",
+    "googleId": null,
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": false,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:12:47.214Z",
+    "updatedAt": "2026-09-25T13:12:47.412Z",
+    "lastLoginAt": "2026-09-25T13:12:47.339Z"
+  },
+  {
+    "id": "usr_1790342502949_6hb5g9e",
+    "name": "Narasimha Valeti",
+    "email": "narasimha9383@gmail.com",
+    "passwordHash": null,
+    "googleId": "of6xekumyMhQjdbNjFPv28I8KVD3",
+    "provider": "google",
+    "avatar": "https://lh3.googleusercontent.com/a/ACg8ocIdyvQYutA383mFphXUpMHoodTUi2QGJWcTcdpl0INuT0tHPA=s96-c",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:21:42.949Z",
+    "updatedAt": "2026-09-25T13:37:52.241Z",
+    "lastLoginAt": "2026-09-25T13:37:52.240Z"
+  },
+  {
+    "id": "usr_1790342747852_8lkvudd",
+    "name": "valeti narasimha",
+    "email": "valetinarasimha47@gmail.com",
+    "passwordHash": null,
+    "googleId": "3ZTVb9xET4Z2ArBYji4cJWuorYD2",
+    "provider": "google",
+    "avatar": "https://lh3.googleusercontent.com/a/ACg8ocI5uRb_gR90_nKtZTWxXv513jGjyg_B3MWG77M9DLbJikJVDg=s96-c",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:25:47.852Z",
+    "updatedAt": "2026-09-25T13:25:47.853Z",
+    "lastLoginAt": "2026-09-25T13:25:47.852Z"
+  },
+  {
+    "id": "usr_1790344635521_yv74wdu",
+    "name": "Test Explorer",
+    "email": "testuser_1790344635443@example.com",
+    "passwordHash": "$2b$10$rgYJwlF8TRtUTqLDvWJ9c.cDVVUz7.vpN/DeSWpOwOuN7jXKMEaEy",
+    "googleId": "linked_google_uid_1790344635815",
+    "firebaseUid": "linked_google_uid_1790344635815",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:57:15.521Z",
+    "updatedAt": "2026-09-25T13:57:15.816Z",
+    "lastLoginAt": "2026-09-25T13:57:15.815Z"
+  },
+  {
+    "id": "usr_1790344635786_cvzgxb3",
+    "name": "Google Explorer",
+    "email": "google_user_1790344635784@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790344635784",
+    "firebaseUid": "google_uid_1790344635784",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:57:15.786Z",
+    "updatedAt": "2026-09-25T13:57:15.804Z",
+    "lastLoginAt": "2026-09-25T13:57:15.804Z"
+  },
+  {
+    "id": "usr_1790344669780_x806zwj",
+    "name": "Test Explorer",
+    "email": "testuser_1790344669698@example.com",
+    "passwordHash": "$2b$10$.yPo3meRRPzdT30BskAuQuN.klWMRGeRhT2L9TpooXsitGNbYE7HS",
+    "googleId": "linked_google_uid_1790344670069",
+    "firebaseUid": "linked_google_uid_1790344670069",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:57:49.780Z",
+    "updatedAt": "2026-09-25T13:57:50.070Z",
+    "lastLoginAt": "2026-09-25T13:57:50.070Z"
+  },
+  {
+    "id": "usr_1790344670041_maksppg",
+    "name": "Google Explorer",
+    "email": "google_user_1790344670039@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790344670039",
+    "firebaseUid": "google_uid_1790344670039",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:57:50.041Z",
+    "updatedAt": "2026-09-25T13:57:50.061Z",
+    "lastLoginAt": "2026-09-25T13:57:50.061Z"
+  },
+  {
+    "id": "usr_1790344695214_928x6z3",
+    "name": "Test Explorer",
+    "email": "testuser_1790344695132@example.com",
+    "passwordHash": "$2b$10$OcSM.TVDhNzxWuVeQjKaT.ndbIPcwyfehy5rblu1qVjRRiewVHbdu",
+    "googleId": "linked_google_uid_1790344695491",
+    "firebaseUid": "linked_google_uid_1790344695491",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:58:15.214Z",
+    "updatedAt": "2026-09-25T13:58:15.492Z",
+    "lastLoginAt": "2026-09-25T13:58:15.492Z"
+  },
+  {
+    "id": "usr_1790344695462_ykfjxi4",
+    "name": "Google Explorer",
+    "email": "google_user_1790344695460@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790344695460",
+    "firebaseUid": "google_uid_1790344695460",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:58:15.462Z",
+    "updatedAt": "2026-09-25T13:58:15.483Z",
+    "lastLoginAt": "2026-09-25T13:58:15.483Z"
+  },
+  {
+    "id": "usr_1790344726436_m5rzfyz",
+    "name": "Test Explorer",
+    "email": "testuser_1790344726357@example.com",
+    "passwordHash": "$2b$10$cxK586NzukfSaB6sr7.8d.Vb8JUDGYOSUSNHcKfRsfRLcw0S8tIf.",
+    "googleId": "linked_google_uid_1790344726735",
+    "firebaseUid": "linked_google_uid_1790344726735",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:58:46.436Z",
+    "updatedAt": "2026-09-25T13:58:46.736Z",
+    "lastLoginAt": "2026-09-25T13:58:46.736Z"
+  },
+  {
+    "id": "usr_1790344726707_wzo471h",
+    "name": "Google Explorer",
+    "email": "google_user_1790344726705@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790344726705",
+    "firebaseUid": "google_uid_1790344726705",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:58:46.707Z",
+    "updatedAt": "2026-09-25T13:58:46.726Z",
+    "lastLoginAt": "2026-09-25T13:58:46.726Z"
+  },
+  {
+    "id": "usr_1790344748899_6bo9v43",
+    "name": "Test Explorer",
+    "email": "testuser_1790344748813@example.com",
+    "passwordHash": "$2b$10$yIjOH45ZRz6qIk/q92MgXuClQREK0dAe4nwxewNjbGpfQjE.Xpq4S",
+    "googleId": "linked_google_uid_1790344749200",
+    "firebaseUid": "linked_google_uid_1790344749200",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:59:08.899Z",
+    "updatedAt": "2026-09-25T13:59:09.201Z",
+    "lastLoginAt": "2026-09-25T13:59:09.201Z"
+  },
+  {
+    "id": "usr_1790344749164_vv09i1t",
+    "name": "Google Explorer",
+    "email": "google_user_1790344749163@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790344749163",
+    "firebaseUid": "google_uid_1790344749163",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T13:59:09.164Z",
+    "updatedAt": "2026-09-25T13:59:09.191Z",
+    "lastLoginAt": "2026-09-25T13:59:09.191Z"
+  },
+  {
+    "id": "usr_1790344803620_lxrmz8z",
+    "name": "Test Explorer",
+    "email": "testuser_1790344803545@example.com",
+    "passwordHash": "$2b$10$aWZL9ecvSY..fGXRSoYmre2peokX0S6mO4/SNh225e3OMRfzdMRjG",
+    "googleId": "linked_google_uid_1790344803874",
+    "firebaseUid": "linked_google_uid_1790344803874",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T14:00:03.620Z",
+    "updatedAt": "2026-09-25T14:00:03.875Z",
+    "lastLoginAt": "2026-09-25T14:00:03.875Z"
+  },
+  {
+    "id": "usr_1790344803852_mq5eryy",
+    "name": "Google Explorer",
+    "email": "google_user_1790344803851@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790344803851",
+    "firebaseUid": "google_uid_1790344803851",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T14:00:03.852Z",
+    "updatedAt": "2026-09-25T14:00:03.868Z",
+    "lastLoginAt": "2026-09-25T14:00:03.868Z"
+  },
+  {
+    "id": "usr_1790344866765_57ox3fe",
+    "name": "Test Explorer",
+    "email": "testuser_1790344866689@example.com",
+    "passwordHash": "$2b$10$3Er21Cap5lllIkKQOKr31OOHghXyoJaoA/lXLbx95pX30vAb77PLu",
+    "googleId": "linked_google_uid_1790344867022",
+    "firebaseUid": "linked_google_uid_1790344867022",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T14:01:06.765Z",
+    "updatedAt": "2026-09-25T14:01:07.023Z",
+    "lastLoginAt": "2026-09-25T14:01:07.023Z"
+  },
+  {
+    "id": "usr_1790344866996_mrbpsde",
+    "name": "Google Explorer",
+    "email": "google_user_1790344866994@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790344866994",
+    "firebaseUid": "google_uid_1790344866994",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T14:01:06.996Z",
+    "updatedAt": "2026-09-25T14:01:07.016Z",
+    "lastLoginAt": "2026-09-25T14:01:07.016Z"
+  },
+  {
+    "id": "usr_1790344907040_73v2yeq",
+    "name": "Test Explorer",
+    "email": "testuser_1790344906962@example.com",
+    "passwordHash": "$2b$10$nj53VXBWmTO1p56uxvH9Ne9obR5DuOZnA6lovwN5KPzCrbwa5BhO2",
+    "googleId": "linked_google_uid_1790344907347",
+    "firebaseUid": "linked_google_uid_1790344907347",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T14:01:47.040Z",
+    "updatedAt": "2026-09-25T14:01:47.347Z",
+    "lastLoginAt": "2026-09-25T14:01:47.347Z"
+  },
+  {
+    "id": "usr_1790344907288_x9dkhr6",
+    "name": "Google Explorer",
+    "email": "google_user_1790344907286@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790344907286",
+    "firebaseUid": "google_uid_1790344907286",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T14:01:47.288Z",
+    "updatedAt": "2026-09-25T14:01:47.338Z",
+    "lastLoginAt": "2026-09-25T14:01:47.338Z"
+  },
+  {
+    "id": "usr_1790345375625_oqjw7zi",
+    "name": "Test Explorer",
+    "email": "testuser_1790345375546@example.com",
+    "passwordHash": "$2b$10$v9nRsh1DE48sQMWRTUTyDeIBoOEL7Dvv8THYWSr2GqbKuMXYOPsJm",
+    "googleId": "linked_google_uid_1790345375907",
+    "firebaseUid": "linked_google_uid_1790345375907",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T14:09:35.625Z",
+    "updatedAt": "2026-09-25T14:09:35.908Z",
+    "lastLoginAt": "2026-09-25T14:09:35.908Z"
+  },
+  {
+    "id": "usr_1790345375881_0lpb4mt",
+    "name": "Google Explorer",
+    "email": "google_user_1790345375878@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790345375878",
+    "firebaseUid": "google_uid_1790345375878",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T14:09:35.881Z",
+    "updatedAt": "2026-09-25T14:09:35.899Z",
+    "lastLoginAt": "2026-09-25T14:09:35.899Z"
+  },
+  {
+    "id": "usr_1790345403821_0nrur9y",
+    "name": "Test Explorer",
+    "email": "testuser_1790345403720@example.com",
+    "passwordHash": "$2b$10$8uSeVwbcziOPUOEyxRbQ1eCkR2RhRaOp4yXs/UGLsqoPquqjqE3G.",
+    "googleId": "linked_google_uid_1790345404099",
+    "firebaseUid": "linked_google_uid_1790345404099",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T14:10:03.821Z",
+    "updatedAt": "2026-09-25T14:10:04.100Z",
+    "lastLoginAt": "2026-09-25T14:10:04.099Z"
+  },
+  {
+    "id": "usr_1790345404069_v4x1gov",
+    "name": "Google Explorer",
+    "email": "google_user_1790345404067@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790345404067",
+    "firebaseUid": "google_uid_1790345404067",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T14:10:04.069Z",
+    "updatedAt": "2026-09-25T14:10:04.092Z",
+    "lastLoginAt": "2026-09-25T14:10:04.092Z"
+  },
+  {
+    "id": "usr_1790346427602_nq40t7u",
+    "name": "Test Explorer",
+    "email": "testuser_1790346427524@example.com",
+    "passwordHash": "$2b$10$lXFMO3ExHjRTgbQG8MPzcenof8jRnMgNT5IiFNLT/3k316UzN4wC.",
+    "googleId": "linked_google_uid_1790346427884",
+    "firebaseUid": "linked_google_uid_1790346427884",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T14:27:07.602Z",
+    "updatedAt": "2026-09-25T14:27:07.884Z",
+    "lastLoginAt": "2026-09-25T14:27:07.884Z"
+  },
+  {
+    "id": "usr_1790346427861_n7xkcrn",
+    "name": "Google Explorer",
+    "email": "google_user_1790346427860@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790346427860",
+    "firebaseUid": "google_uid_1790346427860",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T14:27:07.861Z",
+    "updatedAt": "2026-09-25T14:27:07.876Z",
+    "lastLoginAt": "2026-09-25T14:27:07.876Z"
+  },
+  {
+    "id": "usr_1790353496481_aasxxuj",
+    "name": "Test Explorer",
+    "email": "testuser_1790353496403@example.com",
+    "passwordHash": "$2b$10$FIVrXPZ7g5dOxxcQPj4KkengmhJ/Ei6pPES.wx5Hk2LYdZ8Oqe4lu",
+    "googleId": "linked_google_uid_1790353496814",
+    "firebaseUid": "linked_google_uid_1790353496814",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T16:24:56.481Z",
+    "updatedAt": "2026-09-25T16:24:56.814Z",
+    "lastLoginAt": "2026-09-25T16:24:56.814Z"
+  },
+  {
+    "id": "usr_1790353496784_b2maeq3",
+    "name": "Google Explorer",
+    "email": "google_user_1790353496783@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790353496783",
+    "firebaseUid": "google_uid_1790353496783",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T16:24:56.784Z",
+    "updatedAt": "2026-09-25T16:24:56.806Z",
+    "lastLoginAt": "2026-09-25T16:24:56.806Z"
+  },
+  {
+    "id": "usr_1790354233370_gju5r6c",
+    "name": "Test Explorer",
+    "email": "testuser_1790354233296@example.com",
+    "passwordHash": "$2b$10$/AYaxonDKtYc/E2SG5EQgeCnoGix4zZpqRzKErh.YE6cTS4BQMkz2",
+    "googleId": "linked_google_uid_1790354233625",
+    "firebaseUid": "linked_google_uid_1790354233625",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T16:37:13.370Z",
+    "updatedAt": "2026-09-25T16:37:13.626Z",
+    "lastLoginAt": "2026-09-25T16:37:13.626Z"
+  },
+  {
+    "id": "usr_1790354233604_dkn10dl",
+    "name": "Google Explorer",
+    "email": "google_user_1790354233602@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790354233602",
+    "firebaseUid": "google_uid_1790354233602",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T16:37:13.604Z",
+    "updatedAt": "2026-09-25T16:37:13.618Z",
+    "lastLoginAt": "2026-09-25T16:37:13.618Z"
+  },
+  {
+    "id": "usr_1790357978411_bxx14f5",
+    "name": "Srihari Sivvala",
+    "email": "sriharisivvala216@gmail.com",
+    "passwordHash": null,
+    "googleId": "Pyd51KXQKPhZPRftDPNEfuKxOox2",
+    "firebaseUid": "Pyd51KXQKPhZPRftDPNEfuKxOox2",
+    "provider": "google",
+    "avatar": "https://lh3.googleusercontent.com/a/ACg8ocKB9aaqPIhFabwrAmZJR62OoVz0Llokp5Ug75RhCHsE1tXqvw=s96-c",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T17:39:38.411Z",
+    "updatedAt": "2026-09-25T17:39:38.418Z",
+    "lastLoginAt": "2026-09-25T17:39:38.406Z"
+  },
+  {
+    "id": "usr_1790359350166_xhu07gf",
+    "name": "naidu puli",
+    "email": "naidupuli771@gmail.com",
+    "passwordHash": null,
+    "googleId": "82NuQu2Ln1an05I0WcVMCo6q6ef2",
+    "firebaseUid": "82NuQu2Ln1an05I0WcVMCo6q6ef2",
+    "provider": "google",
+    "avatar": "https://lh3.googleusercontent.com/a/ACg8ocL5ZaaBupILFnrHgIqT5ZsMz4WXO5lfq3iPgh8WVjHhpw-IMA=s96-c",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "availableTime": "30–60 min/day",
+      "availabilitySlot": "Flexible",
+      "location": [
+        "Online / Remote",
+        "Office / Workplace",
+        "Outside"
+      ],
+      "transportation": "No vehicle",
+      "budget": "₹0",
+      "skills": [],
+      "experienceLevel": "Some experience",
+      "willingToLearn": true,
+      "equipment": [
+        "Smartphone",
+        "Internet connection"
+      ],
+      "workPersonality": [
+        "Working alone"
+      ],
+      "incomeGoal": "Side income",
+      "country": "India"
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-25T18:02:30.166Z",
+    "updatedAt": "2026-09-25T19:55:37.632Z",
+    "lastLoginAt": "2026-09-25T18:02:30.166Z"
+  },
+  {
+    "id": "usr_1790493867206_qwf44oc",
+    "name": "Test Explorer",
+    "email": "testuser_1790493867101@example.com",
+    "passwordHash": "$2b$10$Aw/1pilwG7OnqwbdKzTLFO05O7ZZw9GGij1BKt6.onrMHUmpwjXfm",
+    "googleId": "linked_google_uid_1790493867571",
+    "firebaseUid": "linked_google_uid_1790493867571",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:24:27.206Z",
+    "updatedAt": "2026-09-27T07:24:27.573Z",
+    "lastLoginAt": "2026-09-27T07:24:27.572Z"
+  },
+  {
+    "id": "usr_1790493867531_9fkzk1t",
+    "name": "Google Explorer",
+    "email": "google_user_1790493867529@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790493867529",
+    "firebaseUid": "google_uid_1790493867529",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:24:27.531Z",
+    "updatedAt": "2026-09-27T07:24:27.557Z",
+    "lastLoginAt": "2026-09-27T07:24:27.557Z"
+  },
+  {
+    "id": "usr_1790494297473_ndztfzn",
+    "name": "Test Explorer",
+    "email": "testuser_1790494297390@example.com",
+    "passwordHash": "$2b$10$dbQqIR0l7mhx6CKanMXZkOhJQb9C6V6JFrgaAQtshPH9MM8yZ7vYe",
+    "googleId": "linked_google_uid_1790494297790",
+    "firebaseUid": "linked_google_uid_1790494297790",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:31:37.473Z",
+    "updatedAt": "2026-09-27T07:31:37.791Z",
+    "lastLoginAt": "2026-09-27T07:31:37.791Z"
+  },
+  {
+    "id": "usr_1790494297753_ygo3r8n",
+    "name": "Google Explorer",
+    "email": "google_user_1790494297751@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790494297751",
+    "firebaseUid": "google_uid_1790494297751",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:31:37.753Z",
+    "updatedAt": "2026-09-27T07:31:37.782Z",
+    "lastLoginAt": "2026-09-27T07:31:37.782Z"
+  },
+  {
+    "id": "usr_1790494314775_07etoxe",
+    "name": "Test Explorer",
+    "email": "testuser_1790494314700@example.com",
+    "passwordHash": "$2b$10$qH1puyaZrAE.NhkPUjJrU.Cpi31nNBjc.6bvJytD4VcODRoQF3Rl6",
+    "googleId": "linked_google_uid_1790494315024",
+    "firebaseUid": "linked_google_uid_1790494315024",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:31:54.775Z",
+    "updatedAt": "2026-09-27T07:31:55.024Z",
+    "lastLoginAt": "2026-09-27T07:31:55.024Z"
+  },
+  {
+    "id": "usr_1790494315005_zdwldb3",
+    "name": "Google Explorer",
+    "email": "google_user_1790494315003@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790494315003",
+    "firebaseUid": "google_uid_1790494315003",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:31:55.005Z",
+    "updatedAt": "2026-09-27T07:31:55.018Z",
+    "lastLoginAt": "2026-09-27T07:31:55.018Z"
+  },
+  {
+    "id": "usr_1790494352873_w6oyj0s",
+    "name": "Test Explorer",
+    "email": "testuser_1790494352788@example.com",
+    "passwordHash": "$2b$10$5BivLHXAJF5XGauDRflrO.gAiQbC54btp2CpZocdEbrhMvnylTeOq",
+    "googleId": "linked_google_uid_1790494353163",
+    "firebaseUid": "linked_google_uid_1790494353163",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:32:32.873Z",
+    "updatedAt": "2026-09-27T07:32:33.166Z",
+    "lastLoginAt": "2026-09-27T07:32:33.166Z"
+  },
+  {
+    "id": "usr_1790494353134_wx3scjj",
+    "name": "Google Explorer",
+    "email": "google_user_1790494353133@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790494353133",
+    "firebaseUid": "google_uid_1790494353133",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:32:33.134Z",
+    "updatedAt": "2026-09-27T07:32:33.153Z",
+    "lastLoginAt": "2026-09-27T07:32:33.153Z"
+  },
+  {
+    "id": "usr_1790494711122_9lxn4ty",
+    "name": "Test Explorer",
+    "email": "testuser_1790494711041@example.com",
+    "passwordHash": "$2b$10$V.fkl5/kLLd2p8QoUEJWs.Tv3fQtpEG86ZPXFaoSgpZEYxfsq0lmO",
+    "googleId": "linked_google_uid_1790494711442",
+    "firebaseUid": "linked_google_uid_1790494711442",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:38:31.122Z",
+    "updatedAt": "2026-09-27T07:38:31.443Z",
+    "lastLoginAt": "2026-09-27T07:38:31.443Z"
+  },
+  {
+    "id": "usr_1790494711412_36tv8fw",
+    "name": "Google Explorer",
+    "email": "google_user_1790494711411@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790494711411",
+    "firebaseUid": "google_uid_1790494711411",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:38:31.412Z",
+    "updatedAt": "2026-09-27T07:38:31.432Z",
+    "lastLoginAt": "2026-09-27T07:38:31.432Z"
+  },
+  {
+    "id": "usr_1790495091634_osxtzwm",
+    "name": "Test Explorer",
+    "email": "testuser_1790495091557@example.com",
+    "passwordHash": "$2b$10$nLWX4XB4cS2PiB0wZtBvTOqIvH0Kgp8kNF4MBR8JGoj6tsWoKa9a.",
+    "googleId": "linked_google_uid_1790495091930",
+    "firebaseUid": "linked_google_uid_1790495091930",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:44:51.634Z",
+    "updatedAt": "2026-09-27T07:44:51.933Z",
+    "lastLoginAt": "2026-09-27T07:44:51.933Z"
+  },
+  {
+    "id": "usr_1790495091901_l8y4g09",
+    "name": "Google Explorer",
+    "email": "google_user_1790495091900@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790495091900",
+    "firebaseUid": "google_uid_1790495091900",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:44:51.901Z",
+    "updatedAt": "2026-09-27T07:44:51.921Z",
+    "lastLoginAt": "2026-09-27T07:44:51.921Z"
+  },
+  {
+    "id": "usr_1790495754720_qjipc8v",
+    "name": "Test Explorer",
+    "email": "testuser_1790495754645@example.com",
+    "passwordHash": "$2b$10$21laPQhrFqURdy.RpxOPo.Y1B482yAOhJqgtHwaaCmdAvk6axUlyG",
+    "googleId": "linked_google_uid_1790495754977",
+    "firebaseUid": "linked_google_uid_1790495754977",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:55:54.720Z",
+    "updatedAt": "2026-09-27T07:55:54.977Z",
+    "lastLoginAt": "2026-09-27T07:55:54.977Z"
+  },
+  {
+    "id": "usr_1790495754956_zxfk9wu",
+    "name": "Google Explorer",
+    "email": "google_user_1790495754955@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790495754955",
+    "firebaseUid": "google_uid_1790495754955",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T07:55:54.956Z",
+    "updatedAt": "2026-09-27T07:55:54.971Z",
+    "lastLoginAt": "2026-09-27T07:55:54.971Z"
+  },
+  {
+    "id": "usr_1790496150285_b211hvk",
+    "name": "Test Explorer",
+    "email": "testuser_1790496150204@example.com",
+    "passwordHash": "$2b$10$g40W/7p1paUT5gAJK72v..QQBdyNiH8tmOPlXGvoFPx0AIZrhdnWa",
+    "googleId": "linked_google_uid_1790496150577",
+    "firebaseUid": "linked_google_uid_1790496150577",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T08:02:30.285Z",
+    "updatedAt": "2026-09-27T08:02:30.578Z",
+    "lastLoginAt": "2026-09-27T08:02:30.577Z"
+  },
+  {
+    "id": "usr_1790496150544_ztg5td9",
+    "name": "Google Explorer",
+    "email": "google_user_1790496150542@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790496150542",
+    "firebaseUid": "google_uid_1790496150542",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T08:02:30.544Z",
+    "updatedAt": "2026-09-27T08:02:30.569Z",
+    "lastLoginAt": "2026-09-27T08:02:30.569Z"
+  },
+  {
+    "id": "usr_1790498673243_3cqankp",
+    "name": "Test Explorer",
+    "email": "testuser_1790498673087@example.com",
+    "passwordHash": "$2b$10$.9XG0nFhLY3gZbvAMJ1ah.M.Q1DzEMM5ct.wgu.yPzmugMgxDIJry",
+    "googleId": "linked_google_uid_1790498673780",
+    "firebaseUid": "linked_google_uid_1790498673780",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T08:44:33.243Z",
+    "updatedAt": "2026-09-27T08:44:33.782Z",
+    "lastLoginAt": "2026-09-27T08:44:33.782Z"
+  },
+  {
+    "id": "usr_1790498673724_g31ywbh",
+    "name": "Google Explorer",
+    "email": "google_user_1790498673720@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790498673720",
+    "firebaseUid": "google_uid_1790498673720",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T08:44:33.724Z",
+    "updatedAt": "2026-09-27T08:44:33.760Z",
+    "lastLoginAt": "2026-09-27T08:44:33.760Z"
+  },
+  {
+    "id": "usr_1790499786421_j2nx8r9",
+    "name": "Test Explorer",
+    "email": "testuser_1790499786301@example.com",
+    "passwordHash": "$2b$10$Aw95AUE7Z8QTXa6LR02b0.7ZUqXd.ZlwL11ueX5.rQB4kRQasQooC",
+    "googleId": "linked_google_uid_1790499786838",
+    "firebaseUid": "linked_google_uid_1790499786838",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T09:03:06.421Z",
+    "updatedAt": "2026-09-27T09:03:06.839Z",
+    "lastLoginAt": "2026-09-27T09:03:06.839Z"
+  },
+  {
+    "id": "usr_1790499786798_rrjwtmr",
+    "name": "Google Explorer",
+    "email": "google_user_1790499786796@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790499786796",
+    "firebaseUid": "google_uid_1790499786796",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T09:03:06.798Z",
+    "updatedAt": "2026-09-27T09:03:06.826Z",
+    "lastLoginAt": "2026-09-27T09:03:06.826Z"
+  },
+  {
+    "id": "usr_1790500923969_68pd86c",
+    "name": "Test Explorer",
+    "email": "testuser_1790500923788@example.com",
+    "passwordHash": "$2b$10$15pJXjSyTmY/00EBVTDP4ePpOMPNfzPXB6fPiGWCVH.OjWfqPMXTi",
+    "googleId": "linked_google_uid_1790500924581",
+    "firebaseUid": "linked_google_uid_1790500924581",
+    "provider": "email",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Test%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [
+      "freelance-web-dev"
+    ],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T09:22:03.969Z",
+    "updatedAt": "2026-09-27T09:22:04.582Z",
+    "lastLoginAt": "2026-09-27T09:22:04.582Z"
+  },
+  {
+    "id": "usr_1790500924526_43qegju",
+    "name": "Google Explorer",
+    "email": "google_user_1790500924523@example.com",
+    "passwordHash": null,
+    "googleId": "google_uid_1790500924523",
+    "firebaseUid": "google_uid_1790500924523",
+    "provider": "google",
+    "avatar": "https://api.dicebear.com/7.x/initials/svg?seed=Google%20Explorer",
+    "role": "user",
+    "isVerified": true,
+    "savedOpportunities": [],
+    "profileData": {
+      "isProfileCompleted": false
+    },
+    "actionPlans": [],
+    "createdAt": "2026-09-27T09:22:04.526Z",
+    "updatedAt": "2026-09-27T09:22:04.562Z",
+    "lastLoginAt": "2026-09-27T09:22:04.562Z"
+  }
+]
