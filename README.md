@@ -1,5 +1,8 @@
 # Money Way
 
+🌐 **Live Website**: [https://money-way-frontend.vercel.app](https://money-way-frontend.vercel.app)  
+⚙️ **Backend API**: [https://money-way-u2ce.onrender.com](https://money-way-u2ce.onrender.com)
+
 A full-stack intelligent income discovery application built with **React**, **Vite**, **TailwindCSS**, and **Express**.
 
 ---
