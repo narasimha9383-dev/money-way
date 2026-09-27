@@ -1,14 +1,22 @@
 // backend/config/db.js
 import mongoose from 'mongoose';
 
-const DEFAULT_URI = 'mongodb+srv://narasimha9383_db_user:naidux100@cluster0.sjg61rc.mongodb.net/money_way?retryWrites=true&w=majority&appName=Cluster0';
-
 export async function connectDB() {
-  const uri = process.env.MONGODB_URI || DEFAULT_URI;
+  const uri = process.env.MONGODB_URI;
+
+  if (!uri) {
+    console.error('[Money Way] MONGODB_URI environment variable is not set!');
+    console.warn('[Money Way] Continuing in resilient fallback mode (in-memory/file storage active)');
+    return null;
+  }
+
+  // Log partial URI for debugging (hide password)
+  const safeUri = uri.replace(/:([^@]+)@/, ':***@');
+  console.log(`[Money Way] Connecting to MongoDB: ${safeUri}`);
 
   try {
     const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 10000,
       autoIndex: true
     });
 
@@ -16,7 +24,7 @@ export async function connectDB() {
     return conn;
   } catch (error) {
     console.error(`[Money Way] MongoDB Connection Error: ${error.message}`);
-    console.warn(`[Money Way] Continuing in resilient fallback mode (in-memory/file storage active)`);
+    console.warn('[Money Way] Continuing in resilient fallback mode (in-memory/file storage active)');
     return null;
   }
 }
