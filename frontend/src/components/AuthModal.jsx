@@ -1,6 +1,7 @@
 // frontend/src/components/AuthModal.jsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext.jsx';
+import MoneyWayLogo from './MoneyWayLogo.jsx';
 import {
   X,
   Mail,
@@ -199,11 +200,7 @@ export default function AuthModal() {
 
         {/* Modal Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 p-0.5 shadow-lg shadow-emerald-950/60 mb-1">
-            <div className="w-full h-full bg-[#0b1320] rounded-[10px] flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-[#39E98A]" />
-            </div>
-          </div>
+          <MoneyWayLogo size="lg" showText={false} className="justify-center mb-1" />
 
           <h2 className="text-2xl font-bold text-white font-heading tracking-tight">
             {mode === 'signup' 

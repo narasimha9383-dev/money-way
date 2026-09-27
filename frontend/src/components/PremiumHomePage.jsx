@@ -2,6 +2,7 @@
 // Premium Minimal Editorial UI Overlay over Kage-Style 3D Opportunity Landscape
 // The 3D Environment is the Hero across 100% of the page — including the Live Catalogue.
 import React, { useState, useEffect, useRef } from 'react';
+import MoneyWayLogo from './MoneyWayLogo.jsx';
 import { 
   Search, 
   MapPin, 
@@ -218,17 +219,9 @@ export default function PremiumHomePage({
           {/* Brand Logo */}
           <div 
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="flex items-center gap-2.5 cursor-pointer group select-none"
+            className="cursor-pointer group"
           >
-            <div className="w-8 h-8 rounded-lg bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center group-hover:border-[#39E98A] transition-all">
-              <svg className="w-4 h-4 text-[#39E98A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m3 3 7 7-3 3 5 5 9-9" />
-                <path d="M14 3h7v7" />
-              </svg>
-            </div>
-            <span className="font-bold text-base sm:text-lg tracking-tight text-[#F5F7F5] flex items-center gap-1.5">
-              <span>Money <span className="text-[#39E98A]">Way</span></span>
-            </span>
+            <MoneyWayLogo size="md" showSubtitle={false} />
           </div>
 
           {/* Desktop Nav Items */}
@@ -925,15 +918,7 @@ export default function PremiumHomePage({
       {/* ──────────────────────────────────────────────────────────── */}
       <footer className="relative z-10 py-10 border-t border-white/[0.08] bg-transparent text-xs text-[#89938D]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-lg bg-white/[0.05] border border-white/[0.12] flex items-center justify-center">
-              <svg className="w-3.5 h-3.5 text-[#39E98A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m3 3 7 7-3 3 5 5 9-9" />
-                <path d="M14 3h7v7" />
-              </svg>
-            </div>
-            <span className="font-semibold text-sm text-[#F5F7F5]">Money Way</span>
-          </div>
+          <MoneyWayLogo size="sm" showSubtitle={false} />
 
           <div className="flex flex-wrap items-center justify-center gap-6">
             <button onClick={() => scrollTo('discover')} className="hover:text-white transition-colors">

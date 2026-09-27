@@ -1,5 +1,6 @@
 // src/components/HeaderBar.jsx
 import React, { useState, useRef, useEffect } from 'react';
+import MoneyWayLogo from './MoneyWayLogo.jsx';
 import { 
   Moon, 
   Sun, 
@@ -132,31 +133,9 @@ export default function HeaderBar({
             {/* Brand Logo & Tagline */}
             <div 
               onClick={() => handleNav('home')}
-              className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group select-none"
+              className="cursor-pointer group"
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 p-0.5 shadow-md shadow-emerald-950/50 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                <div className="w-full h-full bg-[#0b1320] rounded-[10px] flex items-center justify-center">
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2v8" />
-                    <path d="m4.93 10.93 1.41 1.41" />
-                    <path d="M2 18h2" />
-                    <path d="M20 18h2" />
-                    <path d="m19.07 10.93-1.41 1.41" />
-                    <path d="M22 22H2" />
-                    <path d="m8 22 4-10 4 10" />
-                  </svg>
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-base sm:text-lg font-bold text-white tracking-tight font-heading">
-                    Money <span className="text-[#39E98A]">Way</span>
-                  </span>
-                </div>
-                <span className="text-[10px] sm:text-[11px] text-slate-400 tracking-wide font-medium hidden xs:inline-block">
-                  Find work that fits your life
-                </span>
-              </div>
+              <MoneyWayLogo size="md" />
             </div>
           </div>
 
@@ -367,14 +346,9 @@ export default function HeaderBar({
               <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/70">
                 <div 
                   onClick={() => handleNav('home')}
-                  className="flex items-center gap-2.5 cursor-pointer"
+                  className="cursor-pointer"
                 >
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 p-0.5">
-                    <div className="w-full h-full bg-[#0b1320] rounded-[10px] flex items-center justify-center">
-                      <Sparkles className="w-4 h-4 text-emerald-400" />
-                    </div>
-                  </div>
-                  <span className="font-bold text-white text-base">Money <span className="text-[#39E98A]">Way</span></span>
+                  <MoneyWayLogo size="sm" showSubtitle={false} />
                 </div>
                 <button
                   onClick={() => setMobileDrawerOpen(false)}
