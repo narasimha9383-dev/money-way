@@ -1,13 +1,15 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 
+// Firebase web credentials are public/safe for client-side code.
+// Env vars are preferred; fallback ensures Google Sign-In works on all deployments.
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBFmCHGbtLweT-b4qDZWEE8TaVwkBqfIAE',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'moneyway-100.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'moneyway-100',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'moneyway-100.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '445935673191',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:445935673191:web:a1839945dace14feff99c2'
 };
 
 const isFirebaseConfigured = Boolean(
