@@ -142,11 +142,11 @@ export default function SearchOpportunitiesPage({
 
   // Traditional dual-input state: [What] + [Where]
   const [whatInput, setWhatInput] = useState(() => safeTrim(initialQuery));
-  const [whereInput, setWhereInput] = useState(() => initialCity);
+  const [whereInput, setWhereInput] = useState(() => initialCity || (initialMode === 'remote' ? 'Remote' : ''));
 
   // Active query parameters dispatched to API
   const [activeWhat, setActiveWhat] = useState(() => safeTrim(initialQuery));
-  const [activeWhere, setActiveWhere] = useState(() => initialMode === 'remote' ? 'Remote / Online' : initialCity);
+  const [activeWhere, setActiveWhere] = useState(() => initialCity || (initialMode === 'remote' ? 'Remote' : ''));
 
   // Traditional filter dropdown states
   const [employmentType, setEmploymentType] = useState('all');
@@ -292,8 +292,8 @@ export default function SearchOpportunitiesPage({
   // Dedicated switch to 100% Remote / Online mode
   const handleSetRemoteMode = () => {
     setWorkMode('remote');
-    setWhereInput('');
-    setActiveWhere('Remote / Online');
+    setWhereInput('Remote');
+    setActiveWhere('Remote');
     setPage(1);
     performSearch({
       targetWhat: safeTrim(whatInput),
@@ -325,13 +325,12 @@ export default function SearchOpportunitiesPage({
     if (e) e.preventDefault();
     const cleanWhat = safeTrim(whatInput);
     const cleanWhere = safeTrim(whereInput);
-    const isTargetRemote = workMode === 'remote' || /^(remote|online|wfh|work from home)$/i.test(cleanWhere);
+    const isTargetRemote = /^(remote|online|wfh|work from home)$/i.test(cleanWhere) || (workMode === 'remote' && !cleanWhere);
 
     if (isTargetRemote) {
       setWorkMode('remote');
-      setWhereInput('');
       setActiveWhat(cleanWhat);
-      setActiveWhere('Remote / Online');
+      setActiveWhere(cleanWhere || 'Remote');
       setPage(1);
       performSearch({
         targetWhat: cleanWhat,
@@ -341,13 +340,16 @@ export default function SearchOpportunitiesPage({
         targetPage: 1
       });
     } else {
+      if (workMode === 'remote' && cleanWhere) {
+        setWorkMode('all');
+      }
       setActiveWhat(cleanWhat);
       setActiveWhere(cleanWhere);
       setPage(1);
       performSearch({
         targetWhat: cleanWhat,
         targetWhere: cleanWhere,
-        targetWorkMode: workMode === 'remote' ? 'all' : workMode,
+        targetWorkMode: workMode === 'remote' && cleanWhere ? 'all' : workMode,
         isLoadMore: false,
         targetPage: 1
       });
@@ -583,128 +585,96 @@ export default function SearchOpportunitiesPage({
           {/* Traditional Divider */}
           <div className={`hidden md:block w-px my-1 ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
 
-          {/* Field 2: WHERE (City or 100% Remote / Online) */}
-          <div className={`relative flex-1 flex flex-col justify-center px-3.5 py-2 rounded-xl border focus-within:border-emerald-500/80 focus-within:ring-1 focus-within:ring-emerald-500/30 transition-all ${
+          {/* Field 2: WHERE (City, Area, or Remote) */}
+          <div className={`relative flex-1 flex items-center rounded-xl border focus-within:border-emerald-500/80 focus-within:ring-1 focus-within:ring-emerald-500/30 transition-all ${
             isDark ? 'bg-slate-950/80 border-slate-800/80' : 'bg-slate-50 border-slate-200'
           }`}>
-            {/* Header row with Label & Quick Mode Toggle */}
-            <div className="flex items-center justify-between pb-0.5">
-              <span className={`text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 ${
-                isDark ? 'text-slate-400' : 'text-slate-500'
-              }`}>
-                {isRemoteMode ? <Globe className="w-3 h-3 text-teal-400" /> : <MapPin className="w-3 h-3 text-emerald-500" />}
-                Where
-              </span>
-
-              {/* Mode switch pills */}
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={handleSetCityMode}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
-                    !isRemoteMode
-                      ? isDark ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                      : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'
-                  }`}
-                  title="Search by city or area"
-                >
-                  📍 In-Person
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSetRemoteMode}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
-                    isRemoteMode
-                      ? isDark ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40' : 'bg-teal-100 text-teal-800 border border-teal-300'
-                      : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'
-                  }`}
-                  title="Search 100% remote or online work"
-                >
-                  🌐 Remote / Online
-                </button>
-              </div>
+            <div className={`pl-4 pointer-events-none ${isRemoteMode ? 'text-teal-400' : 'text-emerald-500'}`}>
+              {isRemoteMode ? <Globe className="w-5 h-5" /> : <MapPin className="w-5 h-5" />}
             </div>
 
-            {/* Content row depending on Remote or City mode */}
-            {isRemoteMode ? (
-              <div className="flex items-center justify-between py-1 gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className={`p-1 rounded-md shrink-0 ${isDark ? 'bg-teal-500/20 text-teal-300' : 'bg-teal-100 text-teal-700'}`}>
-                    <Globe className="w-4 h-4" />
-                  </div>
-                  <div className="truncate">
-                    <span className={`text-sm font-bold ${isDark ? 'text-teal-300' : 'text-teal-800'}`}>
-                      100% Remote / Online
-                    </span>
-                    <span className={`hidden sm:inline-block ml-2 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      Work from anywhere
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleSetCityMode}
-                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border shrink-0 transition-colors cursor-pointer ${
-                    isDark
-                      ? 'bg-slate-900 hover:bg-slate-850 text-slate-300 border-slate-800 hover:text-white'
-                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-xs'
-                  }`}
-                >
-                  Switch to City
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 py-0.5">
-                <input
-                  type="text"
-                  id="search-where-input"
-                  name="search_where_location"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck="false"
-                  data-lpignore="true"
-                  value={typeof whereInput === 'string' ? whereInput : ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setWhereInput(val);
-                    if (typeof val === 'string' && /^(remote|online|wfh|work from home)$/i.test(val.trim())) {
-                      handleSetRemoteMode();
-                    }
-                  }}
-                  placeholder="City, state, or area (e.g. Bangalore, Mumbai)..."
-                  className={`w-full bg-transparent text-sm sm:text-base outline-none font-medium ${
-                    isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'
-                  }`}
-                />
+            <div className="flex flex-col flex-1 pl-3 pr-2 py-2 min-w-0">
+              {/* Header row with Label & Quick Helpers */}
+              <div className="flex items-center justify-between pb-0.5">
+                <span className={`text-[10px] uppercase font-bold tracking-wider ${
+                  isDark ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                  Where
+                </span>
 
-                {Boolean(typeof whereInput === 'string' && whereInput) && (
+                {/* 1-click Quick Toggles */}
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setWhereInput('')}
-                    className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                    title="Clear location"
+                    onClick={handleSetRemoteMode}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      isRemoteMode
+                        ? isDark ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40' : 'bg-teal-100 text-teal-800 border border-teal-300'
+                        : isDark ? 'text-slate-400 hover:text-teal-300 bg-slate-900/60 border border-slate-800' : 'text-slate-600 hover:text-teal-700 bg-slate-100 border border-slate-200'
+                    }`}
+                    title="1-click switch to Remote / Online"
                   >
-                    <X className="w-4 h-4" />
+                    <Globe className="w-2.5 h-2.5" />
+                    <span>Remote</span>
                   </button>
-                )}
 
-                {/* GPS Detect Location Button */}
-                <button
-                  type="button"
-                  onClick={handleDetectLocation}
-                  disabled={geoLocating}
-                  className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer shrink-0 disabled:opacity-50 ${
-                    isDark
-                      ? 'bg-slate-900 hover:bg-slate-850 border-slate-700/60 text-slate-300 hover:text-emerald-400'
-                      : 'bg-white hover:bg-slate-100 border-slate-300 text-slate-700 hover:text-emerald-700 shadow-xs'
-                  }`}
-                  title="Detect my current location"
-                >
-                  <Navigation className={`w-3.5 h-3.5 ${geoLocating ? 'animate-spin text-emerald-500' : 'text-emerald-500'}`} />
-                  <span className="hidden sm:inline">{geoLocating ? 'GPS…' : 'Near Me'}</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleDetectLocation}
+                    disabled={geoLocating}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50 ${
+                      !isRemoteMode && safeWhereStr
+                        ? isDark ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : isDark ? 'text-slate-400 hover:text-emerald-300 bg-slate-900/60 border border-slate-800' : 'text-slate-600 hover:text-emerald-700 bg-slate-100 border border-slate-200'
+                    }`}
+                    title="Detect GPS location"
+                  >
+                    <Navigation className={`w-2.5 h-2.5 ${geoLocating ? 'animate-spin text-emerald-400' : ''}`} />
+                    <span>{geoLocating ? 'Locating…' : 'Near Me'}</span>
+                  </button>
+                </div>
               </div>
+
+              {/* ALWAYS LIVE & FULLY EDITABLE INPUT */}
+              <input
+                type="text"
+                id="search-where-input"
+                name="search_where_location"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-lpignore="true"
+                value={typeof whereInput === 'string' ? whereInput : ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setWhereInput(val);
+                  if (/^(remote|online|wfh|work from home)$/i.test(val.trim())) {
+                    setWorkMode('remote');
+                  } else if (workMode === 'remote' && val.trim().length > 0) {
+                    setWorkMode('all');
+                  }
+                }}
+                placeholder="City, state, or 'Remote'..."
+                className={`w-full bg-transparent text-sm sm:text-base outline-none font-medium truncate ${
+                  isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'
+                }`}
+              />
+            </div>
+
+            {/* Clear location button */}
+            {Boolean(typeof whereInput === 'string' && whereInput) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setWhereInput('');
+                  if (workMode === 'remote') setWorkMode('all');
+                }}
+                className="pr-3 p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer shrink-0"
+                title="Clear location"
+              >
+                <X className="w-4 h-4" />
+              </button>
             )}
           </div>
 
