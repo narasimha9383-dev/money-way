@@ -99,11 +99,22 @@ export default function App() {
     return { tab: 'home', subTab: 'generator' };
   };
 
+  const getInitialSearchQuery = () => {
+    try {
+      if (typeof window !== 'undefined' && window.location.search) {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('q') || '';
+      }
+    } catch {}
+    return '';
+  };
+
   const initialRoute = getInitialRoute();
   const [currentTab, setCurrentTab] = useState(initialRoute.tab);
   const [recommendationSubTab, setRecommendationSubTab] = useState(initialRoute.subTab);
+  const [searchQuery, setSearchQuery] = useState(getInitialSearchQuery);
 
-  const handleNavigateTab = (tab, subTab) => {
+  const handleNavigateTab = (tab, subTab, query) => {
     setShowQuestionnaire(false);
     if (tab === 'recommendations' || tab === 'money-recommendation') {
       setCurrentTab('recommendations');
@@ -121,6 +132,22 @@ export default function App() {
     }
     
     setCurrentTab(tab);
+    if (tab === 'search') {
+      const q = typeof query === 'string' ? query : searchQuery;
+      if (typeof query === 'string') {
+        setSearchQuery(query);
+      }
+      try {
+        const newPath = q ? `/search?q=${encodeURIComponent(q)}` : '/search';
+        if (window.location.pathname + window.location.search !== newPath) {
+          window.history.pushState({ tab: 'search', query: q }, '', newPath);
+        }
+      } catch {
+        // ignore
+      }
+      return;
+    }
+
     try {
       const newPath = tab === 'home' ? '/' : `/${tab}`;
       if (window.location.pathname !== newPath) {
@@ -136,6 +163,12 @@ export default function App() {
       const route = getInitialRoute();
       setCurrentTab(route.tab);
       setRecommendationSubTab(route.subTab);
+      try {
+        const params = new URLSearchParams(window.location.search);
+        setSearchQuery(params.get('q') || '');
+      } catch {
+        // ignore
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -147,7 +180,6 @@ export default function App() {
   const [loading, setLoading] = useState(false);
 
   // Search state (Sections 1, 2, 3, 4, 17, 18, 19, 22)
-  const [searchQuery, setSearchQuery] = useState('');
   const [searchMode, setSearchMode] = useState('ai'); // 'standard' | 'ai'
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState(null); // null = no search active

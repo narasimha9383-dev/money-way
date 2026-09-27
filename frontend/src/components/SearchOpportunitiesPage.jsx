@@ -128,6 +128,34 @@ export default function SearchOpportunitiesPage({
     return () => clearTimeout(handler);
   }, [searchInput, activeQuery]);
 
+  // Synchronize initialQuery if updated from parent/URL
+  useEffect(() => {
+    if (initialQuery !== undefined && initialQuery !== activeQuery) {
+      setSearchInput(initialQuery);
+      setActiveQuery(initialQuery);
+    }
+  }, [initialQuery]);
+
+  // Keep browser address bar in sync with active search query (e.g., /search?q=delivery)
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/search')) {
+        const currentUrl = new URL(window.location.href);
+        if (activeQuery) {
+          currentUrl.searchParams.set('q', activeQuery);
+        } else {
+          currentUrl.searchParams.delete('q');
+        }
+        const newPath = currentUrl.pathname + currentUrl.search;
+        if (window.location.pathname + window.location.search !== newPath) {
+          window.history.replaceState(null, '', newPath);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [activeQuery]);
+
   // Execute Search from API
   const performSearch = useCallback(async (isLoadMore = false, targetPage = 1) => {
     if (isLoadMore) {
